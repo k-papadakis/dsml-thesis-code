@@ -1,0 +1,2 @@
+ELD_FREQ = "2h"
+ELD_TEST_LEN = 12 * 7
