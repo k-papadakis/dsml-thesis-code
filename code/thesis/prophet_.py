@@ -1,12 +1,10 @@
 import itertools
-import os
-import pickle
-import sys
+import json
 import warnings
-from collections.abc import Sequence
 from dataclasses import dataclass
+from os import PathLike
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, TypeAlias
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -16,168 +14,142 @@ from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 from prophet.plot import add_changepoints_to_plot, plot_cross_validation_metric
 
+ParamDict: TypeAlias = dict[str, Any]
+ParamGrid: TypeAlias = dict[str, list[Any]]
 
-@dataclass
-class ProphetSeries:
-    name: str
-    train: pd.DataFrame
-    test: pd.DataFrame
-    horizon: pd.Timedelta
-    freq: pd.Timedelta
 
-    def __post_init__(self):
-        for df in self.train, self.test:
-            assert df.columns.to_list() == ["ds", "y"]
+def flatten_grid(grid: ParamGrid) -> list[ParamDict]:
+    return [dict(zip(grid.keys(), v)) for v in itertools.product(*grid.values())]
 
-    def cross_validate(self, params: dict[str, Any]) -> pd.DataFrame:
-        m = Prophet(**params).fit(self.train)
-        cv = cross_validation(
-            m,
-            initial=30 * self.horizon,
-            horizon=self.horizon,
-            parallel="processes",
-        )
 
-        return cv
-
-    def gridsearch_cv(
-        self, param_grid: dict[str, list[Any]], metric="rmse"
-    ) -> tuple[pd.DataFrame, dict[str, Any], pd.DataFrame]:
-        all_params = [
-            dict(zip(param_grid.keys(), v))
-            for v in itertools.product(*param_grid.values())
-        ]
-
-        cvs = list(map(self.cross_validate, all_params))
-        perfs: list[pd.DataFrame] = [performance_metrics(cv, rolling_window=1.0) for cv in cvs]  # type: ignore
-
-        perf, params, cv = min(
-            zip(perfs, all_params, cvs), key=lambda t: t[0][metric].item()
-        )
-
-        return perf, params, cv
-
-    def fit(self, params: dict[str, Any]) -> tuple[Prophet, pd.DataFrame]:
-        m = Prophet(**params)
-        m.fit(self.train)
-
-        future = m.make_future_dataframe(periods=len(self.test), freq=self.freq)  # type: ignore
-        forecast = m.predict(future)
-
-        return m, forecast
-
-    def fit_best(
+class Series:
+    def __init__(
         self,
-        param_grid: dict[str, list[Any]],
-        metric="rmse",
-    ) -> "BestFit":
-        perf, params, cv = self.gridsearch_cv(param_grid, metric=metric)
-        model, forecast = self.fit(params)
+        data: pd.DataFrame,
+        freq: pd.Timedelta,
+        horizon: pd.Timedelta,
+    ):
+        assert set(data.columns) == {"ds", "y"}
+        self.data = data
+        self.freq = freq
+        self.horizon = horizon
 
-        return BestFit(self, model, forecast, params, cv, metric, perf)
+    @property
+    def train_cutoff(self) -> pd.Timestamp:
+        return self.data["ds"].max() - self.horizon
+
+    @property
+    def train(self) -> pd.DataFrame:
+        return self.data[self.data["ds"] <= self.train_cutoff]
+
+    @property
+    def test(self) -> pd.DataFrame:
+        return self.data[self.data["ds"] > self.train_cutoff]
+
+
+def save_model_results(path: str | PathLike, series: Series, params: ParamDict) -> None:
+    path = Path(path)
+
+    model = Prophet(**params)
+    model.fit(series.train)
+
+    future = model.make_future_dataframe(
+        periods=len(series.test), freq=series.freq  # type: ignore
+    )
+    forecast = model.predict(future)
+    forecast["y"] = series.data["y"]
+    forecast["cutoff"] = series.train_cutoff
+
+    # Performance csv
+    performance: pd.DataFrame = performance_metrics(forecast, rolling_window=1.0)  # type: ignore
+    performance.to_csv(path / "performance.csv")
+
+    # Model image
+    fig_model = model.plot(forecast, include_legend=True)
+    _ = add_changepoints_to_plot(fig_model.gca(), model, forecast)
+
+    fig_model.savefig(path / "model.png")
+    fig_model.savefig(path / "model.pdf")
+    plt.close(fig_model)
+
+    # Components image
+    fig_components = model.plot_components(forecast)
+
+    fig_components.savefig(path / "components.png")
+    fig_components.savefig(path / "components.pdf")
+    plt.close(fig_components)
+
+    # Forecasts image
+    fig_forecasts = plt.figure(figsize=(10, 6))
+    series.train.set_index("ds")["y"][-3 * len(series.test) :].rename("training").plot(
+        legend=True
+    )
+    series.test.set_index("ds")["y"].rename("actual").plot(legend=True)
+    forecast.set_index("ds")["yhat"][-len(series.test) :].rename("predicted").plot(
+        legend=True
+    )
+    fig_forecasts.tight_layout()
+
+    fig_forecasts.savefig(path / "forecasts.png")
+    fig_forecasts.savefig(path / "forecasts.pdf")
+    plt.close(fig_forecasts)
 
 
 @dataclass
-class BestFit:
-    series: ProphetSeries
-    model: Prophet
-    forecast: pd.DataFrame
-    params: dict[str, Any]
-    cv: pd.DataFrame
-    metric: str
-    perf: pd.DataFrame
+class CvResult:
+    params: ParamDict
+    result: pd.DataFrame
 
-    def save(self, root_dir: str | os.PathLike[str]):
-        path = Path(root_dir) / self.series.name
+    def performance(self) -> pd.DataFrame:
+        return performance_metrics(self.result, rolling_window=1.0)  # type: ignore
 
-        path.mkdir(parents=True, exist_ok=False)
-
-        with open(path / "bestfit.pkl", "wb") as f:
-            pickle.dump(self, f)
-
-        # Model
-        fig_model = self.model.plot(self.forecast, include_legend=True)
-        _ = add_changepoints_to_plot(fig_model.gca(), self.model, self.forecast)
-        fig_model.suptitle(self.series.name)
-        fig_model.savefig(path / "model.png")
-        fig_model.savefig(path / "model.pdf")
-        plt.close(fig_model)
+    def save(self, path: str | PathLike) -> None:
+        path = Path(path)
 
         # CV
-        fig_cv = plot_cross_validation_metric(self.cv, metric="mape")
-        fig_cv.gca().set_title(f"{self.series.name} CV")
+        self.result.to_csv(path / "cv.csv")
+
+        # Params
+        with (path / "params.json").open("w") as f:
+            json.dump(self.params, f, indent=2)
+
+        # CV image
+        fig_cv = plot_cross_validation_metric(self.result, metric="mape")
+        fig_cv.gca().set_title(f"CV")
         fig_cv.savefig(path / "cv.png")
         fig_cv.savefig(path / "cv.pdf")
         plt.close(fig_cv)
 
-        # Components
-        fig_components = self.model.plot_components(self.forecast)
-        fig_components.suptitle(self.series.name)
-        fig_components.savefig(path / "components.png")
-        fig_components.savefig(path / "components.pdf")
-        plt.close(fig_components)
 
-        # Forecasts
-        fig_forecasts = plt.figure(figsize=(10, 6))
-        self.series.train.set_index("ds")["y"][-3 * len(self.series.test) :].rename(
-            "training"
-        ).plot(legend=True)
-        self.series.test.set_index("ds")["y"].rename("actual").plot(legend=True)
-        self.forecast.set_index("ds")["yhat"][-len(self.series.test) :].rename(
-            "predicted"
-        ).plot(legend=True)
-        fig_forecasts.gca().set_title(self.series.name)
-        fig_forecasts.tight_layout()
-        fig_forecasts.savefig(path / "forecasts.png")
-        fig_forecasts.savefig(path / "forecasts.pdf")
-        plt.close(fig_forecasts)
+def cross_validate_(
+    series: Series, params: ParamDict, initial_horizons: int
+) -> CvResult:
+    m = Prophet(**params).fit(series.train)
+    return CvResult(
+        params,
+        cross_validation(
+            m,
+            initial=initial_horizons * series.horizon,
+            horizon=series.horizon,
+            # parallel="processes",
+        ),
+    )
 
 
-def make_series(
-    df_train: pd.DataFrame, df_test: pd.DataFrame
-) -> Sequence[ProphetSeries]:
-    freq = pd.Timedelta(pd.infer_freq(df_train.index))  # type: ignore
-    horizon = len(df_test) * freq
+@dataclass
+class GridSearchCvResult:
+    result: list[CvResult]
 
-    return [
-        ProphetSeries(
-            str(name),
-            s_train.reset_index().rename(columns={"time_idx": "ds", name: "y"}),
-            s_test.reset_index().rename(columns={"time_idx": "ds", name: "y"}),
-            horizon,
-            freq,
-        )
-        for ((name, s_train), (_, s_test)) in zip(df_train.items(), df_test.items())
-    ]
+    def best(self, metric="rmse") -> CvResult:
+        return min(self.result, key=lambda cv: cv.performance()[metric].item())
 
 
-def main():
-    from thesis.dataloading import load_eld
-
-    root_dir = Path("output", "eld", "prophet")
-    data_path = Path(sys.argv[1])
-    param_grid = {
-        "changepoint_prior_scale": [0.001, 0.01, 0.1, 0.5],
-        "seasonality_mode": ["multiplicative"],
-        "weekly_seasonality": [True],
-    }
-    df_train, df_test = load_eld(data_path)
-
-    perfs: dict[str, pd.Series] = {}
-    for series in make_series(df_train, df_test):
-        best_fit = series.fit_best(param_grid)
-        perfs[series.name] = best_fit.perf.iloc[0]
-        best_fit.save(root_dir)
-
-    perfs_df = pd.DataFrame.from_dict(perfs, orient="index")
-    perfs_df.to_csv(root_dir / "scores.csv")
-    perfs_df.mean(axis=0).to_csv(root_dir / "mean_scores.csv")
-
-
-if __name__ == "__main__":
-    main()
-
-    # root_dir = Path("output", "eld", "prophet")
-    # for p in root_dir.glob("**/bestfit.pkl"):
-    #     with p.open("rb") as f:
-    #         bestfit = pickle.load(f)
+def gridsearch_cv_(
+    series: Series, param_grid: ParamGrid, initial_horizons: int
+) -> GridSearchCvResult:
+    return GridSearchCvResult(
+        [
+            cross_validate_(series, params, initial_horizons)
+            for params in flatten_grid(param_grid)
+        ]
+    )
