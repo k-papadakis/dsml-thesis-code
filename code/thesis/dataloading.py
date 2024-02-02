@@ -21,7 +21,6 @@ def load_eld(
         parse_dates=True,
         decimal=",",
         engine="pyarrow",
-        dtype_backend="pyarrow",
     )
     df = df.loc[start_time:end_time, components]
     df = df.resample(freq).mean()

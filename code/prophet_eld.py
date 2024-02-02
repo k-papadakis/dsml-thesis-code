@@ -6,11 +6,6 @@ import pandas as pd
 from thesis.dataloading import load_eld
 from thesis.prophet_ import Series, gridsearch_cv_, save_model_results
 
-pd.set_option("mode.copy_on_write", True)
-pd.set_option("future.infer_string", True)
-pd.set_option("future.no_silent_downcasting", True)
-
-
 ROOT_DIR = Path("output", "eld", "prophet")
 PARAM_GRID = {
     "changepoint_prior_scale": [0.001, 0.01, 0.1, 0.5],
