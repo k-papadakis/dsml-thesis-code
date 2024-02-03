@@ -47,6 +47,15 @@ def main():
     with Pool() as p:
         p.starmap(fit_one, named_series_list)
 
+    results = pd.DataFrame.from_dict(
+        {
+            p.parent.stem: pd.read_csv(p).iloc[0, 2:-1]
+            for p in ROOT_DIR.glob("**/performance.csv")
+        },
+        orient="index",
+    ).sort_index()
+    results.to_csv(ROOT_DIR / "results.csv")
+
 
 if __name__ == "__main__":
     main()
