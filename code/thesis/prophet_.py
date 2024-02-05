@@ -80,6 +80,7 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     plt.close(fig_components)
 
     # Forecasts image
+    # TODO: Just have the entire series and the forecast
     fig_forecasts = plt.figure(figsize=(10, 6))
     series.train.set_index("ds")["y"][-3 * len(series.test) :].rename("training").plot(
         legend=True
