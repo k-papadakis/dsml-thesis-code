@@ -14,6 +14,8 @@ def load_eld(
     end_time=pd.Timestamp(2014, 9, 1),
     components=[f"MT_{i:03}" for i in range(1, 51)],
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
+    # TODO: Start from 2014-01-01
+    # TODO: Resample to 1 hour
     df = pd.read_csv(
         file_path,
         sep=";",
@@ -26,5 +28,8 @@ def load_eld(
     df = df.resample(freq).mean()
 
     df.index.name = "date"
+
+    assert df.notna().all(axis=None), "There are missing values in the dataset."
+    assert df.index.diff()[1:].nunique() == 1, "The dataset is not uniformly sampled."  # type: ignore
 
     return df, freq
