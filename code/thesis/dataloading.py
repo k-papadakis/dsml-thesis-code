@@ -16,6 +16,7 @@ def load_eld(
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
     # TODO: Start from 2014-01-01
     # TODO: Resample to 1 hour
+    # TODO: Predict 1 day using 1 week
     df = pd.read_csv(
         file_path,
         sep=";",
