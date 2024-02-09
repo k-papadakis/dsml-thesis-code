@@ -9,10 +9,10 @@ pd.set_option("future.infer_string", True)
 pd.set_option("future.no_silent_downcasting", True)
 
 
-def load_eld(
+def load_electricity(
     path: str | PathLike[str],
     freq=pd.Timedelta(1, "hour"),
-    start_time=pd.Timestamp(2014, 1, 1),
+    start_time=pd.Timestamp(2014, 2, 1),
     end_time=pd.Timestamp(2014, 9, 1),
     components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
@@ -28,6 +28,7 @@ def load_eld(
         parse_dates=True,
         decimal=",",
         engine="pyarrow",
+        dtype_backend="pyarrow",
     )
     df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
@@ -44,7 +45,7 @@ def load_traffic(
     path: str | PathLike[str],
     freq=pd.Timedelta(1, "hour"),
     start_time=pd.Timestamp(2008, 1, 1),
-    end_time=pd.Timestamp(2008, 8, 1),
+    end_time=pd.Timestamp(2008, 6, 25),
     components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
     """https://archive.ics.uci.edu/dataset/204/pems-sf"""
