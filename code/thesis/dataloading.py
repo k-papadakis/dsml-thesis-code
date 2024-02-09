@@ -14,7 +14,7 @@ def load_eld(
     freq=pd.Timedelta(1, "hour"),
     start_time=pd.Timestamp(2014, 1, 1),
     end_time=pd.Timestamp(2014, 9, 1),
-    components=[f"MT_{i:03}" for i in range(1, 51)],
+    components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
     """https://archive.ics.uci.edu/ml/machine-learning-databases/00321/LD2011_2014.txt.zip"""
 
@@ -29,7 +29,7 @@ def load_eld(
         decimal=",",
         engine="pyarrow",
     )
-    df = df.loc[start_time:end_time, components]
+    df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
 
     df.index.name = "date"
@@ -44,8 +44,8 @@ def load_traffic(
     path: str | PathLike[str],
     freq=pd.Timedelta(1, "hour"),
     start_time=pd.Timestamp(2008, 1, 1),
-    end_time=pd.Timestamp(2008, 9, 1),
-    components=slice(None),
+    end_time=pd.Timestamp(2008, 8, 1),
+    components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
     """https://archive.ics.uci.edu/dataset/204/pems-sf"""
 
@@ -99,8 +99,7 @@ def load_traffic(
     stations = load_stations(path / "stations_list")
 
     diffs = np.diff(labels, prepend=labels[0], append=labels[-1] + 1) % 7
-    days_passed = np.cumsum(diffs)
-    date_index = pd.Timestamp("2008-01-01") + pd.to_timedelta(days_passed, "D")
+    date_index = pd.Timestamp("2008-01-01") + pd.to_timedelta(np.cumsum(diffs), "D")
     datetime_index = (
         date_index.to_series()
         .asfreq("10min")
@@ -114,11 +113,11 @@ def load_traffic(
     )
 
     df = pd.DataFrame(
-        data.swapaxes(1, 2).reshape((-1, 963)),
+        data.reshape((-1, data.shape[-1])),
         index=datetime_index,
         columns=stations,
     )
-    df = df.loc[start_time:end_time, components]
+    df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
 
     return df, freq

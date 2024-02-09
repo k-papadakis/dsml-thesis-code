@@ -14,6 +14,8 @@ from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 from prophet.plot import add_changepoints_to_plot, plot_cross_validation_metric
 
+from thesis.metrics import METRICS
+
 ParamDict: TypeAlias = dict[str, Any]
 ParamGrid: TypeAlias = dict[str, list[Any]]
 
@@ -29,7 +31,8 @@ class Series:
         freq: pd.Timedelta,
         horizon: pd.Timedelta,
     ):
-        assert set(data.columns) == {"ds", "y"}
+        assert set(data.columns) <= {"ds", "y", "cap", "floor"}
+
         self.data = data
         self.freq = freq
         self.horizon = horizon
@@ -57,12 +60,16 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
         periods=len(series.test), freq=series.freq  # type: ignore
     )
     forecast = model.predict(future)
-    forecast["y"] = series.data["y"]
-    forecast["cutoff"] = series.train_cutoff
+    # forecast["y"] = series.data["y"]
+    # forecast["cutoff"] = series.train_cutoff
 
     # Performance csv
-    performance: pd.DataFrame = performance_metrics(forecast, rolling_window=1.0)  # type: ignore
-    performance.to_csv(path / "performance.csv")
+    y_pred = forecast.iloc[-len(series.test) :]["yhat"].values
+    y_true = series.test["y"].values
+    performance = {
+        metric_fn.__name__: metric_fn(y_true, y_pred) for metric_fn in METRICS
+    }
+    pd.Series(performance).to_frame().T.to_csv(path / "performance.csv", index=False)
 
     # Model image
     fig_model = model.plot(forecast, include_legend=True)
@@ -80,12 +87,10 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     plt.close(fig_components)
 
     # Forecasts image
-    # TODO: Just have the entire series and the forecast
     fig_forecasts = plt.figure(figsize=(10, 6))
-    series.train.set_index("ds")["y"][-3 * len(series.test) :].rename("training").plot(
+    series.data.set_index("ds")["y"][-4 * len(series.test) :].rename("observed").plot(
         legend=True
     )
-    series.test.set_index("ds")["y"].rename("actual").plot(legend=True)
     forecast.set_index("ds")["yhat"][-len(series.test) :].rename("predicted").plot(
         legend=True
     )
@@ -123,7 +128,7 @@ class CvResult:
 
 
 def cross_validate_(
-    series: Series, params: ParamDict, initial_horizons: int
+    series: Series, params: ParamDict, initial_horizons: int, parallel=None
 ) -> CvResult:
     m = Prophet(**params).fit(series.train)
     return CvResult(
@@ -132,7 +137,7 @@ def cross_validate_(
             m,
             initial=initial_horizons * series.horizon,
             horizon=series.horizon,
-            # parallel="processes",
+            parallel=parallel,
         ),
     )
 
@@ -146,11 +151,11 @@ class GridSearchCvResult:
 
 
 def gridsearch_cv_(
-    series: Series, param_grid: ParamGrid, initial_horizons: int
+    series: Series, param_grid: ParamGrid, initial_horizons: int, parallel=None
 ) -> GridSearchCvResult:
     return GridSearchCvResult(
         [
-            cross_validate_(series, params, initial_horizons)
+            cross_validate_(series, params, initial_horizons, parallel=parallel)
             for params in flatten_grid(param_grid)
         ]
     )
