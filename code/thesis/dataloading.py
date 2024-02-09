@@ -18,7 +18,6 @@ def load_electricity(
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
     """https://archive.ics.uci.edu/ml/machine-learning-databases/00321/LD2011_2014.txt.zip"""
 
-    # TODO: Predict 1 day using 1 week
     path = Path(path, "LD2011_2014.txt")
 
     df = pd.read_csv(

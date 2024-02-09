@@ -1,10 +1,15 @@
 from pathlib import Path
 
 import lightning.pytorch as pl
+import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_forecasting import NBeats, TimeSeriesDataSet
+from pytorch_forecasting import (
+    DeepAR,
+    MultivariateNormalDistributionLoss,
+    TimeSeriesDataSet,
+)
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from thesis.dataloading import load_traffic
@@ -13,7 +18,7 @@ from thesis.metrics import METRICS
 pl.seed_everything(42)
 torch.set_float32_matmul_precision("medium")
 
-ROOT_DIR = Path("output", "traffic", "nbeats")
+ROOT_DIR = Path("output", "traffic", "deepvar")
 
 # data loading
 data, freq = load_traffic("./datasets/traffic/")
@@ -28,6 +33,9 @@ data = (
     .rename("value")  # type: ignore
     .reset_index()
 )
+data["weekday"] = data["date"].dt.weekday.astype("string").astype("category")
+data["hour"] = data["date"].dt.hour.astype("string").astype("category")
+data["series"] = data["series"].astype("string").astype("category")
 
 # slicing configuration
 horizon = pd.Timedelta(1, "day")
@@ -52,10 +60,11 @@ train = TimeSeriesDataSet(
     time_idx="time_idx",
     target="value",
     group_ids=["series"],
-    # only unknown variable is "value" - and N-Beats can also not take any additional variables
     time_varying_unknown_reals=["value"],
     max_encoder_length=input_length,
     max_prediction_length=output_length,
+    time_varying_known_categoricals=["hour", "weekday"],
+    static_categoricals=["series"],
 )
 val = TimeSeriesDataSet.from_dataset(
     train,
@@ -73,28 +82,23 @@ print(f"{len(train) = }\n{len(val) = }\n{len(test) = }")
 
 batch_size = 128
 train_dataloader = train.to_dataloader(
-    train=True,
-    batch_size=batch_size,
-    num_workers=2,
+    train=True, batch_size=batch_size, num_workers=2, batch_sampler="synchronized"
 )
 val_dataloader = val.to_dataloader(
-    train=False,
-    batch_size=batch_size,
-    num_workers=2,
+    train=False, batch_size=batch_size, num_workers=2, batch_sampler="synchronized"
 )
 test_dataloader = test.to_dataloader(
-    train=False,
-    batch_size=batch_size,
-    num_workers=0,
+    train=False, batch_size=batch_size, num_workers=0, batch_sampler="synchronized"
 )
 
 # model
-# TODO: No percentage loss in Traffic
-model = NBeats.from_dataset(
+model = DeepAR.from_dataset(
     train,
-    expansion_coefficient_lengths=[3, 2],
-    widths=[256, 2048],
-    learning_rate=1e-4,
+    learning_rate=1e-2,
+    hidden_size=30,
+    rnn_layers=2,
+    optimizer="Adam",
+    loss=MultivariateNormalDistributionLoss(quantiles=[0.1, 0.5, 0.9], rank=30),
     log_interval=300,
 )
 
@@ -119,16 +123,30 @@ trainer.fit(
 )
 _ = trainer.test(ckpt_path="best", dataloaders=test_dataloader)
 
-# Further Logging
-
 # load best
 best_model_path = trainer.checkpoint_callback.best_model_path  # type: ignore
-best_model = NBeats.load_from_checkpoint(best_model_path)
+best_model = DeepAR.load_from_checkpoint(best_model_path)
 
 # predict
 out = best_model.predict(
-    test_dataloader, mode="raw", return_x=True, return_y=True, return_index=True
+    test_dataloader,
+    mode="raw",
+    return_x=True,
+    return_y=True,
+    return_index=True,
+    n_samples=100,
 )
+
+# Correlation matrix of the average prediction random variable (84 predictions)
+cov = (
+    best_model.loss.map_x_to_distribution(
+        best_model.predict(test_dataloader, mode=("raw", "prediction"), n_samples=None)  # type: ignore
+    )
+    .base_dist.covariance_matrix.mean(0)  # type: ignore
+    .cpu()
+)
+
+corr = cov / cov.diag().outer(cov.diag()).sqrt()
 
 performance = {
     metric_fn.__name__: {
@@ -136,7 +154,7 @@ performance = {
         for name, y_true, y_pred in zip(
             out.index["series"],
             out.y[0],
-            out.output.prediction,
+            out.output.prediction.mean(-1),
         )
     }
     for metric_fn in METRICS
@@ -156,7 +174,13 @@ for i, name in out.index["series"].items():
     )
     summary_writer.add_figure(f"prediction/{name}", fig)
 
-# plot interpretation
-for i, name in out.index["series"].items():
-    fig = best_model.plot_interpretation(out.x, out.output, idx=i)
-    summary_writer.add_figure(f"interpretation/{name}", fig)
+# Correlation matrix
+fig = plt.figure()
+plt.imshow(corr, cmap="bwr", vmin=-1, vmax=1)
+plt.colorbar()
+summary_writer.add_figure("correlation", fig)
+
+# Correlations histogram
+fig = plt.figure()
+plt.hist(corr[corr < 1], edgecolor="black")
+summary_writer.add_figure("correlation_histogram", fig)

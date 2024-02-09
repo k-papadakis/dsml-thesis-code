@@ -3,20 +3,30 @@ from pathlib import Path
 import lightning.pytorch as pl
 import pandas as pd
 import torch
+import torch.nn as nn
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_forecasting import NBeats, TimeSeriesDataSet
+from pytorch_forecasting import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    QuantileLoss,
+    TemporalFusionTransformer,
+    TimeSeriesDataSet,
+)
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from thesis.dataloading import load_traffic
+from thesis.dataloading import load_electricity
 from thesis.metrics import METRICS
 
 pl.seed_everything(42)
 torch.set_float32_matmul_precision("medium")
 
-ROOT_DIR = Path("output", "traffic", "nbeats")
+ROOT_DIR = Path("output", "electricity", "tft")
 
 # data loading
-data, freq = load_traffic("./datasets/traffic/")
+data, freq = load_electricity("./datasets/electricity/")
 data = (
     data.dropna()
     .reset_index()
@@ -28,6 +38,9 @@ data = (
     .rename("value")  # type: ignore
     .reset_index()
 )
+data["weekday"] = data["date"].dt.weekday.astype("string").astype("category")
+data["hour"] = data["date"].dt.hour.astype("string").astype("category")
+data["series"] = data["series"].astype("string").astype("category")
 
 # slicing configuration
 horizon = pd.Timedelta(1, "day")
@@ -52,10 +65,11 @@ train = TimeSeriesDataSet(
     time_idx="time_idx",
     target="value",
     group_ids=["series"],
-    # only unknown variable is "value" - and N-Beats can also not take any additional variables
     time_varying_unknown_reals=["value"],
     max_encoder_length=input_length,
     max_prediction_length=output_length,
+    time_varying_known_categoricals=["hour", "weekday"],
+    static_categoricals=["series"],
 )
 val = TimeSeriesDataSet.from_dataset(
     train,
@@ -71,31 +85,25 @@ test = TimeSeriesDataSet.from_dataset(
 
 print(f"{len(train) = }\n{len(val) = }\n{len(test) = }")
 
-batch_size = 128
-train_dataloader = train.to_dataloader(
-    train=True,
-    batch_size=batch_size,
-    num_workers=2,
-)
-val_dataloader = val.to_dataloader(
-    train=False,
-    batch_size=batch_size,
-    num_workers=2,
-)
-test_dataloader = test.to_dataloader(
-    train=False,
-    batch_size=batch_size,
-    num_workers=0,
-)
+batch_size = 64
+train_dataloader = train.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
+val_dataloader = val.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
+test_dataloader = test.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
 # model
-# TODO: No percentage loss in Traffic
-model = NBeats.from_dataset(
+model = TemporalFusionTransformer.from_dataset(
     train,
-    expansion_coefficient_lengths=[3, 2],
-    widths=[256, 2048],
-    learning_rate=1e-4,
+    hidden_size=160,
+    hidden_continuous_size=160,
+    dropout=0.1,
+    lstm_layers=1,
+    attention_head_size=4,
+    output_size=3,
+    learning_rate=1e-3,
     log_interval=300,
+    optimizer="Ranger",
+    loss=QuantileLoss([0.1, 0.5, 0.9]),
+    logging_metrics=nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]),
 )
 
 # trainer
@@ -106,10 +114,12 @@ checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min", verbose=Fa
 trainer = pl.Trainer(
     max_epochs=100,
     callbacks=[early_stop_callback, checkpoint_callback],
-    gradient_clip_val=0.1,
+    gradient_clip_val=0.01,
     gradient_clip_algorithm="norm",
     default_root_dir=ROOT_DIR,
 )
+
+# Further Logging
 
 # fit
 trainer.fit(
@@ -119,15 +129,17 @@ trainer.fit(
 )
 _ = trainer.test(ckpt_path="best", dataloaders=test_dataloader)
 
-# Further Logging
-
 # load best
 best_model_path = trainer.checkpoint_callback.best_model_path  # type: ignore
-best_model = NBeats.load_from_checkpoint(best_model_path)
+best_model = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
 
 # predict
 out = best_model.predict(
-    test_dataloader, mode="raw", return_x=True, return_y=True, return_index=True
+    test,
+    mode="raw",
+    return_x=True,
+    return_y=True,
+    return_index=True,
 )
 
 performance = {
@@ -136,11 +148,13 @@ performance = {
         for name, y_true, y_pred in zip(
             out.index["series"],
             out.y[0],
-            out.output.prediction,
+            out.output.prediction.mean(-1),
         )
     }
     for metric_fn in METRICS
 }
+
+# TODO: Find a way to log quantile losses.
 
 pd.DataFrame(performance).to_csv(Path(trainer.log_dir, "performance.csv"))  # type: ignore
 
@@ -156,7 +170,10 @@ for i, name in out.index["series"].items():
     )
     summary_writer.add_figure(f"prediction/{name}", fig)
 
-# plot interpretation
-for i, name in out.index["series"].items():
-    fig = best_model.plot_interpretation(out.x, out.output, idx=i)
-    summary_writer.add_figure(f"interpretation/{name}", fig)
+predictions_vs_actuals = best_model.calculate_prediction_actual_by_variable(
+    out.x, out.output.prediction
+)
+figs = best_model.plot_prediction_actual_by_variable(predictions_vs_actuals)
+
+for name, fig in figs.items():  # type: ignore
+    summary_writer.add_figure(f"prediction_actual_by_variable/{name}", fig)
