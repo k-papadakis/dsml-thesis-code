@@ -88,7 +88,6 @@ test_dataloader = test.to_dataloader(
 )
 
 # model
-# TODO: No percentage loss in Traffic
 model = NBeats.from_dataset(
     train,
     expansion_coefficient_lengths=[3, 2],
