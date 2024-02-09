@@ -32,7 +32,7 @@ data = (
 horizon = pd.Timedelta(1, "day")
 
 output_length = horizon // freq
-input_length = 3 * output_length
+input_length = 7 * output_length
 validation_cutoff = data["time_idx"].max() - output_length
 training_cutoff = validation_cutoff - 21 * output_length
 
@@ -92,7 +92,7 @@ test_dataloader = test.to_dataloader(
 model = NBeats.from_dataset(
     train,
     expansion_coefficient_lengths=[3, 2],
-    widths=[128, 1024],
+    widths=[256, 2048],
     learning_rate=1e-4,
     log_interval=300,
 )
