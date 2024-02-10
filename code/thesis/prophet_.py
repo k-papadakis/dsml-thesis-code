@@ -14,7 +14,7 @@ from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 from prophet.plot import add_changepoints_to_plot, plot_cross_validation_metric
 
-from thesis.metrics import METRICS
+from .metrics import METRICS
 
 ParamDict: TypeAlias = dict[str, Any]
 ParamGrid: TypeAlias = dict[str, list[Any]]

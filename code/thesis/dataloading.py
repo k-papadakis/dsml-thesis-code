@@ -156,10 +156,7 @@ class SeriesDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
 
     def prepare_data(self):
-        print(f"Preparing dataset {self.name} in {self.path}.")
-
         if self.path.is_dir():
-            print(f"Dataset {self.name} already exists in {self.path}.")
             return
 
         if self.name == "electricity":
@@ -169,6 +166,7 @@ class SeriesDataModule(pl.LightningDataModule):
         else:
             raise ValueError(f"Unknown dataset name: {self.name}")
 
+        print(f"Dataset {self.name} not found in {self.path}.")
         print(f"Downloading dataset {self.name} from {url} to {self.path}.")
         download_and_extract_zip(url, self.path)
         print(f"Downloaded dataset {self.name} to {self.path}.")
