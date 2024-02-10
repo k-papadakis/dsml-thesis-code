@@ -13,11 +13,10 @@ from pytorch_forecasting import (
     SMAPE,
     QuantileLoss,
     TemporalFusionTransformer,
-    TimeSeriesDataSet,
 )
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from thesis.dataloading import load_traffic
+from thesis.dataloading import SeriesDataModule
 from thesis.metrics import METRICS
 
 pl.seed_everything(42)
@@ -26,73 +25,20 @@ torch.set_float32_matmul_precision("medium")
 ROOT_DIR = Path("output", "traffic", "tft")
 
 # data loading
-data, freq = load_traffic("./datasets/traffic/")
-data = (
-    data.dropna()
-    .reset_index()
-    .reset_index()
-    .rename(columns={"index": "time_idx"})
-    .set_index(["time_idx", "date"])
-    .rename_axis("series", axis="columns")
-    .stack()
-    .rename("value")  # type: ignore
-    .reset_index()
+datamodule = SeriesDataModule(
+    name="traffic",
+    path="./datasets/traffic/",
+    multivariate=False,
+    with_covariates=True,
+    transform="auto",
+    batch_size=128,
 )
-data["weekday"] = data["date"].dt.weekday.astype("string").astype("category")
-data["hour"] = data["date"].dt.hour.astype("string").astype("category")
-data["series"] = data["series"].astype("string").astype("category")
-
-# slicing configuration
-horizon = pd.Timedelta(1, "day")
-
-output_length = horizon // freq
-input_length = 7 * output_length
-validation_cutoff = data["time_idx"].max() - output_length
-training_cutoff = validation_cutoff - 21 * output_length
-
-assert pd.DataFrame.equals(
-    data[(data["series"] == "MT_001") & (data["time_idx"] <= validation_cutoff)],
-    data[(data["series"] == "MT_001") & (data["date"] <= data["date"].max() - horizon)],
-)
-
-print(
-    f"{input_length = }\n{output_length = }\n{validation_cutoff = }\n{training_cutoff = }\n{data['time_idx'].max() = }"
-)
-
-# datasets and dataloaders
-train = TimeSeriesDataSet(
-    data[data["time_idx"] <= training_cutoff],
-    time_idx="time_idx",
-    target="value",
-    group_ids=["series"],
-    time_varying_unknown_reals=["value"],
-    max_encoder_length=input_length,
-    max_prediction_length=output_length,
-    time_varying_known_categoricals=["hour", "weekday"],
-    static_categoricals=["series"],
-)
-val = TimeSeriesDataSet.from_dataset(
-    train,
-    data[data["time_idx"] <= validation_cutoff],
-    min_prediction_idx=training_cutoff + 1,
-)
-test = TimeSeriesDataSet.from_dataset(
-    train,
-    data,
-    # min_prediction_idx=validation_cutoff + 1,
-    predict=True,
-)
-
-print(f"{len(train) = }\n{len(val) = }\n{len(test) = }")
-
-batch_size = 128
-train_dataloader = train.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
-val_dataloader = val.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
-test_dataloader = test.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+datamodule.setup("test")
+test_dataset = datamodule.test
 
 # model
 model = TemporalFusionTransformer.from_dataset(
-    train,
+    test_dataset,
     hidden_size=320,
     hidden_continuous_size=320,
     dropout=0.3,
@@ -122,12 +68,8 @@ trainer = pl.Trainer(
 # Further Logging
 
 # fit
-trainer.fit(
-    model,
-    train_dataloaders=train_dataloader,
-    val_dataloaders=val_dataloader,
-)
-_ = trainer.test(ckpt_path="best", dataloaders=test_dataloader)
+trainer.fit(model, datamodule=datamodule)
+_ = trainer.test(ckpt_path="best", datamodule=datamodule)
 
 # load best
 best_model_path = trainer.checkpoint_callback.best_model_path  # type: ignore
@@ -135,7 +77,7 @@ best_model = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
 
 # predict
 out = best_model.predict(
-    test,
+    test_dataset,
     mode="raw",
     return_x=True,
     return_y=True,
