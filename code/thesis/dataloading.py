@@ -1,6 +1,9 @@
+from io import BytesIO
 from os import PathLike
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
+from urllib.request import urlopen
+from zipfile import ZipFile
 
 import lightning.pytorch as pl
 import numpy as np
@@ -11,6 +14,12 @@ from torch.utils.data import DataLoader
 pd.set_option("mode.copy_on_write", True)
 pd.set_option("future.infer_string", True)
 pd.set_option("future.no_silent_downcasting", True)
+
+
+def download_and_extract_zip(zipurl: str, path: str | PathLike[str]) -> None:
+    with urlopen(zipurl) as zipresp:
+        with ZipFile(BytesIO(zipresp.read())) as zfile:
+            zfile.extractall(path)
 
 
 def load_electricity(
@@ -140,13 +149,29 @@ class SeriesDataModule(pl.LightningDataModule):
         super().__init__()
 
         self.name = name
-        self.path = path
+        self.path = Path(path)
         self.multivariate = multivariate
         self.with_covariates = with_covariates
         self.transform = transform
         self.batch_size = batch_size
 
-    # TODO: Add a prepare_data method to download the dataset if it doesn't exist
+    def prepare_data(self):
+        print(f"Preparing dataset {self.name} in {self.path}.")
+
+        if self.path.is_dir():
+            print(f"Dataset {self.name} already exists in {self.path}.")
+            return
+
+        if self.name == "electricity":
+            url = "https://archive.ics.uci.edu/static/public/321/electricityloaddiagrams20112014.zip"
+        elif self.name == "traffic":
+            url = "https://archive.ics.uci.edu/static/public/204/pems+sf.zip"
+        else:
+            raise ValueError(f"Unknown dataset name: {self.name}")
+
+        print(f"Downloading dataset {self.name} from {url} to {self.path}.")
+        download_and_extract_zip(url, self.path)
+        print(f"Downloaded dataset {self.name} to {self.path}.")
 
     def setup(self, stage: str):
         if self.name == "electricity":
