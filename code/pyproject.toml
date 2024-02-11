@@ -20,4 +20,5 @@ dependencies = [
     "pytorch-forecasting",
     "prophet",
     "optuna",
+    "pyarrow",
 ]
