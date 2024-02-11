@@ -24,6 +24,11 @@ def main():
         "model",
         choices=["tft", "nbeats", "deepvar", "deepar"],
     )
+    argparser.add_argument(
+        "--seed",
+        type=int,
+        required=False,
+    )
     args = argparser.parse_args()
 
     setting_creator = {
@@ -41,11 +46,13 @@ def main():
             f"Model {args.model} for dataset {args.dataset} not implemented"
         )
 
+    if args.seed is not None:
+        pl.seed_everything(args.seed)
+    torch.set_float32_matmul_precision("medium")
+
     setting = setting_creator()
     setting.run()
 
 
 if __name__ == "__main__":
-    pl.seed_everything(42)
-    torch.set_float32_matmul_precision("medium")
     main()

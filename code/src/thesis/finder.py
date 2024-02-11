@@ -37,6 +37,11 @@ def main():
         type=int,
         required=False,
     )
+    argparser.add_argument(
+        "--seed",
+        type=int,
+        required=False,
+    )
     args = argparser.parse_args()
 
     objective = {
@@ -54,10 +59,16 @@ def main():
             f"Model {args.model} for dataset {args.dataset} not implemented"
         )
 
+    if args.seed is not None:
+        pl.seed_everything(args.seed)
+    torch.set_float32_matmul_precision("medium")
+    optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
+
     study = optuna.create_study(
-        study_name=f"{args.dataset}-{args.model}-study",
+        study_name=f"{args.dataset}-{args.model}",
         storage=args.storage,
         direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=args.seed),
     )
 
     study.optimize(
@@ -70,7 +81,4 @@ def main():
 
 
 if __name__ == "__main__":
-    pl.seed_everything(42)
-    torch.set_float32_matmul_precision("medium")
-    optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
     main()
