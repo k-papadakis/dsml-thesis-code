@@ -6,7 +6,7 @@ import lightning.pytorch as pl
 import optuna
 import torch
 
-from thesis.objectives import deepar_objective, nbeats_objective, tft_objective
+from .objectives import deepar_objective, nbeats_objective, tft_objective
 
 
 def main():

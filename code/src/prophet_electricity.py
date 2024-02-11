@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from thesis.dataloading import load_electricity
-from thesis.prophet_ import Series, gridsearch_cv_, save_model_results
+from .dataloading import load_electricity
+from .prophet_ import Series, gridsearch_cv_, save_model_results
 
 ROOT_DIR = Path("output", "electricity", "prophet")
 PARAM_GRID = {

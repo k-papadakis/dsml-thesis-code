@@ -1,9 +1,9 @@
 #!/bin/bash
 
-python finder.py electricity nbeats
-python finder.py electricity deepvar
-python finder.py electricity tft
-python finder.py traffic nbeats
-python finder.py traffic deepvar
-python finder.py traffic deepar
-python finder.py traffic tft
+python -m thesis.finder electricity nbeats
+python -m thesis.finder electricity deepvar
+python -m thesis.finder electricity tft
+python -m thesis.finder traffic nbeats
+python -m thesis.finder traffic deepvar
+python -m thesis.finder traffic deepar
+python -m thesis.finder traffic tft

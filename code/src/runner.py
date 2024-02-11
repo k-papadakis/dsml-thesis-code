@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 import lightning.pytorch as pl
 import torch
 
-from thesis.defaults import (
+from .defaults import (
     electricity_deepvar,
     electricity_nbeats,
     electricity_tft,

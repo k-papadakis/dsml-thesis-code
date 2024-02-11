@@ -1,12 +1,12 @@
 #!/bin/bash
 
-python prophet_electricity.py
-python prophet_traffic.py
+python -m thesis.prophet_electricity
+python -m thesis.prophet_traffic
 
-python runner.py electricity nbeats
-python runner.py electricity deepvar
-python runner.py electricity tft
-python runner.py traffic nbeats
-python runner.py traffic deepvar
-python runner.py traffic deepar
-python runner.py traffic tft
+python -m thesis.runner electricity nbeats
+python -m thesis.runner electricity deepvar
+python -m thesis.runner electricity tft
+python -m thesis.runner traffic nbeats
+python -m thesis.runner traffic deepvar
+python -m thesis.runner traffic deepar
+python -m thesis.runner traffic tft
