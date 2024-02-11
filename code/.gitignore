@@ -2,7 +2,6 @@ datasets/
 output/
 lightning_logs/
 .vscode
-experiments.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
