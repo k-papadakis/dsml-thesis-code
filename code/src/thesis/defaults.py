@@ -71,6 +71,27 @@ def electricity_deepvar(
     return setting
 
 
+def electricity_deepar(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
+    training_config = TrainingConfig(
+        batch_size=128,
+        learning_rate=1e-2,
+        gradient_clip_val=0.1,
+        dropout=0.1,
+    )
+    model_config = DeepARConfig(
+        hidden_size=30,
+        rnn_layers=2,
+        distribution="normal",
+    )
+
+    setting = deepar(
+        "electricity", model_config, training_config, input_dir, output_dir
+    )
+    return setting
+
+
 def traffic_deepvar(
     input_dir: str | PathLike[str], output_dir: str | PathLike[str]
 ) -> Setting:

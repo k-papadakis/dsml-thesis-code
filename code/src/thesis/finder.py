@@ -1,15 +1,7 @@
-import logging
-import sys
 from argparse import ArgumentParser
 
-import lightning.pytorch as pl
-import optuna
-import torch
 
-from .objectives import deepar_objective, nbeats_objective, tft_objective
-
-
-def main():
+def parse_args():
     argparser = ArgumentParser()
     argparser.add_argument(
         "dataset",
@@ -53,6 +45,22 @@ def main():
         type=str,
     )
     args = argparser.parse_args()
+    return args
+
+
+def main(args):
+    import logging
+    import sys
+
+    import lightning.pytorch as pl
+    import optuna
+    import torch
+
+    if args.seed is not None:
+        pl.seed_everything(args.seed)
+    torch.set_float32_matmul_precision("medium")
+
+    from .objectives import deepar_objective, nbeats_objective, tft_objective
 
     objective = {
         ("electricity", "nbeats"): nbeats_objective(
@@ -81,9 +89,6 @@ def main():
             f"Model {args.model} for dataset {args.dataset} not implemented"
         )
 
-    if args.seed is not None:
-        pl.seed_everything(args.seed)
-    torch.set_float32_matmul_precision("medium")
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 
     study = optuna.create_study(
@@ -103,4 +108,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
