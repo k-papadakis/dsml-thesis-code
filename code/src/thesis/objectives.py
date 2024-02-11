@@ -50,6 +50,7 @@ def _modify_setting(setting: Setting, trial: optuna.Trial) -> None:
         enable_checkpointing=False,
         logger=False,
         enable_progress_bar=False,
+        enable_model_summary=False,
     )
     setting.model.hparams.log_interval = -1  # type: ignore
     setting.model.hparams.log_val_interval = -1  # type: ignore
