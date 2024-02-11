@@ -25,6 +25,18 @@ def main():
         type=str,
         required=False,
     )
+    argparser.add_argument(
+        "--n-trials",
+        default=30,
+        type=int,
+        required=False,
+    )
+    argparser.add_argument(
+        "--timeout",
+        default=1 * 60 * 60,
+        type=int,
+        required=False,
+    )
     args = argparser.parse_args()
 
     objective = {
@@ -49,9 +61,9 @@ def main():
     )
 
     study.optimize(
-        nbeats_objective("electricity"),
-        n_trials=30,
-        timeout=1 * 60 * 60,
+        objective,
+        n_trials=args.n_trials,
+        timeout=args.timeout,
         show_progress_bar=True,
         gc_after_trial=True,
     )
