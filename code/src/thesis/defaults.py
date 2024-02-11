@@ -17,13 +17,13 @@ def electricity_nbeats(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-4,
-        gradient_clip_val=0.1,
-        dropout=0.1,
+        learning_rate=5e-4,
+        gradient_clip_val=1.0,
+        dropout=0.2,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
-        widths=[256, 2048],
+        widths=[64, 512],
     )
 
     setting = nbeats(
@@ -37,13 +37,13 @@ def traffic_nbeats(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-4,
-        gradient_clip_val=0.1,
+        learning_rate=7e-4,
+        gradient_clip_val=30.0,
         dropout=0.1,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
-        widths=[256, 2048],
+        widths=[64, 512],
     )
 
     setting = nbeats("traffic", model_config, training_config, input_dir, output_dir)
@@ -56,7 +56,7 @@ def electricity_deepvar(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
-        gradient_clip_val=0.1,
+        gradient_clip_val=0.3,
         dropout=0.1,
     )
     model_config = DeepARConfig(
@@ -71,13 +71,14 @@ def electricity_deepvar(
     return setting
 
 
+# TODO
 def electricity_deepar(
     input_dir: str | PathLike[str], output_dir: str | PathLike[str]
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
-        gradient_clip_val=0.1,
+        gradient_clip_val=0.3,
         dropout=0.1,
     )
     model_config = DeepARConfig(
@@ -98,7 +99,7 @@ def traffic_deepvar(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
-        gradient_clip_val=0.1,
+        gradient_clip_val=0.3,
         dropout=0.1,
     )
     model_config = DeepARConfig(
@@ -117,7 +118,7 @@ def traffic_deepar(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
-        gradient_clip_val=0.1,
+        gradient_clip_val=0.3,
         dropout=0.1,
     )
     model_config = DeepARConfig(
