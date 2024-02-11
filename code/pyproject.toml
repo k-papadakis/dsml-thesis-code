@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=59.6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thesis"
+version = "0.0.1"
+authors = [
+    { name = "Konstantinos Papadakis", email = "k.i.papadakis@gmail.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
