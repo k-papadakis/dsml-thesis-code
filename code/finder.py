@@ -50,8 +50,8 @@ def main():
 
     study.optimize(
         nbeats_objective("electricity"),
-        n_trials=100,
-        timeout=3600,
+        n_trials=30,
+        timeout=2 * 60 * 60,
         show_progress_bar=True,
         gc_after_trial=True,
     )

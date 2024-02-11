@@ -2,6 +2,7 @@ from typing import Literal
 
 import lightning.pytorch as pl
 import optuna
+from lightning.pytorch.callbacks import EarlyStopping
 from optuna.integration import PyTorchLightningPruningCallback
 
 from .configs import (
@@ -19,12 +20,12 @@ from .configs import (
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
     return TrainingConfig(
         batch_size=128,
-        max_epochs=5,
-        learning_rate=trial.suggest_categorical("learning_rate", [1e-4, 1e-3, 1e-2]),
-        gradient_clip_val=trial.suggest_categorical(
-            "gradient_clip_val", [0.1, 1.0, 100.0]
+        max_epochs=10,
+        learning_rate=trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True),
+        gradient_clip_val=trial.suggest_float(
+            "gradient_clip_val", 0.1, 100.0, log=True
         ),
-        dropout=trial.suggest_categorical("dropout", [0.1, 0.3]),
+        dropout=trial.suggest_float("dropout", 0.1, 0.5, step=0.1),
     )
 
 
@@ -32,7 +33,16 @@ def _modify_setting(setting: Setting, trial: optuna.Trial) -> None:
     setting.trainer = pl.Trainer(
         max_epochs=setting.trainer.max_epochs,
         gradient_clip_val=setting.trainer.gradient_clip_val,
-        callbacks=[PyTorchLightningPruningCallback(trial, monitor="val_loss")],
+        callbacks=[
+            EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-4,
+                patience=2,
+                mode="min",
+                verbose=False,
+            ),
+            PyTorchLightningPruningCallback(trial, monitor="val_loss"),
+        ],
         gradient_clip_algorithm="norm",
         limit_train_batches=0.2,
         limit_val_batches=0.25,
@@ -68,7 +78,7 @@ def tft_objective(dataset_name: Literal["electricity", "traffic"]):
     def inner(trial: optuna.Trial) -> float:
 
         model_config = TFTConfig(
-            hidden_size=trial.suggest_categorical("hidden_size", [160, 320]),
+            hidden_size=trial.suggest_categorical("hidden_size", [80, 160, 320]),
             lstm_layers=1,
             attention_head_size=4,
         )
@@ -98,7 +108,7 @@ def deepar_objective(
 
         model_config = DeepARConfig(
             hidden_size=trial.suggest_categorical("hidden_size", [10, 30]),
-            rnn_layers=trial.suggest_categorical("rnn_layers", [1, 2]),
+            rnn_layers=2,
             distribution=distribution,
         )
 
