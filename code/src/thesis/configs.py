@@ -8,6 +8,8 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.tuner.lr_finder import _LRFinder
+from lightning.pytorch.tuner.tuning import Tuner
 from matplotlib import pyplot as plt
 from pytorch_forecasting import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting import BaseModel as ForecastingModel
@@ -26,30 +28,33 @@ from .dataloading import SeriesDataModule
 from .metrics import METRICS
 
 
+class ModelConfig:
+    pass
+
+
 @dataclass
 class TrainingConfig:
     batch_size: int
     learning_rate: float
     gradient_clip_val: float
     dropout: float
-    max_epochs: int
 
 
 @dataclass
-class NBEATSConfig:
+class NBEATSConfig(ModelConfig):
     expansion_coefficient_lengths: list[int]
     widths: list[int]
 
 
 @dataclass
-class TFTConfig:
+class TFTConfig(ModelConfig):
     hidden_size: int
     lstm_layers: int
     attention_head_size: int
 
 
 @dataclass
-class DeepARConfig:
+class DeepARConfig(ModelConfig):
     hidden_size: int
     rnn_layers: int
     distribution: Literal["beta", "normal", "multinormal"]
@@ -60,6 +65,14 @@ class Setting:
     datamodule: SeriesDataModule
     model: ForecastingModel
     trainer: pl.Trainer
+
+    def find_lr(self):
+        lr_finder: Optional[_LRFinder] = Tuner(self.trainer).lr_find(
+            self.model, datamodule=self.datamodule, min_lr=1e-5, max_lr=1e-1
+        )
+        assert lr_finder is not None
+        lr: float = lr_finder.suggestion()
+        setattr(self.model.hparams, "learning_rate", lr)
 
     def fit(self):
         self.trainer.fit(self.model, datamodule=self.datamodule)
@@ -156,15 +169,12 @@ def nbeats(
     name: Literal["electricity", "traffic"],
     model_config: NBEATSConfig,
     training_config: TrainingConfig,
-    input_dir: Optional[str | PathLike[str]] = None,
-    output_dir: Optional[str | PathLike[str]] = None,
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
 ) -> Setting:
 
-    if input_dir is None:
-        input_dir = Path("datasets", name)
-
-    if output_dir is None:
-        output_dir = Path("output", name, "nbeats")
+    input_dir = Path(input_dir, name)
+    output_dir = Path(output_dir, name, "nbeats")
 
     datamodule = SeriesDataModule(
         name=name,
@@ -191,13 +201,13 @@ def nbeats(
     early_stop_callback = EarlyStopping(
         monitor="val_loss",
         min_delta=1e-4,
-        patience=3,
+        patience=5,
         mode="min",
         verbose=False,
     )
     checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min", verbose=False)
     trainer = pl.Trainer(
-        max_epochs=training_config.max_epochs,
+        max_epochs=100,
         callbacks=[early_stop_callback, checkpoint_callback],
         gradient_clip_val=training_config.gradient_clip_val,
         gradient_clip_algorithm="norm",
@@ -211,18 +221,16 @@ def deepar(
     name: Literal["electricity", "traffic"],
     model_config: DeepARConfig,
     training_config: TrainingConfig,
-    input_dir: Optional[str | PathLike[str]] = None,
-    output_dir: Optional[str | PathLike[str]] = None,
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
 ) -> Setting:
-    if input_dir is None:
-        input_dir = Path("datasets", name)
 
-    if output_dir is None:
-        output_dir = Path(
-            "output",
-            name,
-            "deepvar" if model_config.distribution == "multinormal" else "deepar",
-        )
+    input_dir = Path(input_dir, name)
+    output_dir = Path(
+        output_dir,
+        name,
+        "deepvar" if model_config.distribution == "multinormal" else "deepar",
+    )
 
     datamodule = SeriesDataModule(
         name=name,
@@ -263,13 +271,13 @@ def deepar(
     early_stop_callback = EarlyStopping(
         monitor="val_loss",
         min_delta=1e-4,
-        patience=3,
+        patience=5,
         mode="min",
         verbose=False,
     )
     checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min", verbose=False)
     trainer = pl.Trainer(
-        max_epochs=training_config.max_epochs,
+        max_epochs=100,
         callbacks=[early_stop_callback, checkpoint_callback],
         gradient_clip_val=training_config.gradient_clip_val,
         gradient_clip_algorithm="norm",
@@ -283,14 +291,12 @@ def tft(
     name: Literal["electricity", "traffic"],
     model_config: TFTConfig,
     training_config: TrainingConfig,
-    input_dir: Optional[str | PathLike[str]] = None,
-    output_dir: Optional[str | PathLike[str]] = None,
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
 ) -> Setting:
-    if input_dir is None:
-        input_dir = Path("datasets", name)
 
-    if output_dir is None:
-        output_dir = Path("output", name, "tft")
+    input_dir = Path(input_dir, name)
+    output_dir = Path(output_dir, name, "tft")
 
     datamodule = SeriesDataModule(
         name=name,
@@ -322,13 +328,13 @@ def tft(
     early_stop_callback = EarlyStopping(
         monitor="val_loss",
         min_delta=1e-4,
-        patience=3,
+        patience=5,
         mode="min",
         verbose=False,
     )
     checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min", verbose=False)
     trainer = pl.Trainer(
-        max_epochs=training_config.max_epochs,
+        max_epochs=100,
         callbacks=[early_stop_callback, checkpoint_callback],
         gradient_clip_val=training_config.gradient_clip_val,
         gradient_clip_algorithm="norm",

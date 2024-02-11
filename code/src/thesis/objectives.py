@@ -1,3 +1,4 @@
+from os import PathLike
 from typing import Literal
 
 import lightning.pytorch as pl
@@ -20,7 +21,6 @@ from .configs import (
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
     return TrainingConfig(
         batch_size=128,
-        max_epochs=10,
         learning_rate=trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True),
         gradient_clip_val=trial.suggest_float(
             "gradient_clip_val", 0.1, 100.0, log=True
@@ -31,7 +31,7 @@ def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
 
 def _modify_setting(setting: Setting, trial: optuna.Trial) -> None:
     setting.trainer = pl.Trainer(
-        max_epochs=setting.trainer.max_epochs,
+        max_epochs=10,
         gradient_clip_val=setting.trainer.gradient_clip_val,
         callbacks=[
             EarlyStopping(
@@ -46,6 +46,7 @@ def _modify_setting(setting: Setting, trial: optuna.Trial) -> None:
         gradient_clip_algorithm="norm",
         limit_train_batches=0.2,
         limit_val_batches=0.25,
+        default_root_dir=setting.trainer.default_root_dir,
         # logging
         enable_checkpointing=False,
         logger=False,
@@ -56,7 +57,11 @@ def _modify_setting(setting: Setting, trial: optuna.Trial) -> None:
     setting.model.hparams.log_val_interval = -1  # type: ignore
 
 
-def nbeats_objective(dataset_name: Literal["electricity", "traffic"]):
+def nbeats_objective(
+    dataset_name: Literal["electricity", "traffic"],
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
+):
     def inner(trial: optuna.Trial) -> float:
 
         model_config = NBEATSConfig(
@@ -68,7 +73,9 @@ def nbeats_objective(dataset_name: Literal["electricity", "traffic"]):
         )
 
         training_config = _common_training_config(trial)
-        setting = nbeats(dataset_name, model_config, training_config)
+        setting = nbeats(
+            dataset_name, model_config, training_config, input_dir, output_dir
+        )
         _modify_setting(setting, trial)
 
         setting.fit()
@@ -78,7 +85,11 @@ def nbeats_objective(dataset_name: Literal["electricity", "traffic"]):
     return inner
 
 
-def tft_objective(dataset_name: Literal["electricity", "traffic"]):
+def tft_objective(
+    dataset_name: Literal["electricity", "traffic"],
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
+):
     def inner(trial: optuna.Trial) -> float:
 
         model_config = TFTConfig(
@@ -88,7 +99,9 @@ def tft_objective(dataset_name: Literal["electricity", "traffic"]):
         )
 
         training_config = _common_training_config(trial)
-        setting = tft(dataset_name, model_config, training_config)
+        setting = tft(
+            dataset_name, model_config, training_config, input_dir, output_dir
+        )
         _modify_setting(setting, trial)
 
         setting.fit()
@@ -101,6 +114,8 @@ def tft_objective(dataset_name: Literal["electricity", "traffic"]):
 def deepar_objective(
     dataset_name: Literal["electricity", "traffic"],
     distribution: Literal["multinormal", "normal", "beta"],
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
 ):
     if dataset_name == "electricity" and distribution == "beta":
         raise ValueError(
@@ -117,7 +132,9 @@ def deepar_objective(
         )
 
         training_config = _common_training_config(trial)
-        setting = deepar(dataset_name, model_config, training_config)
+        setting = deepar(
+            dataset_name, model_config, training_config, input_dir, output_dir
+        )
         _modify_setting(setting, trial)
 
         setting.fit()

@@ -1,3 +1,5 @@
+from os import PathLike
+
 from .configs import (
     DeepARConfig,
     NBEATSConfig,
@@ -10,47 +12,52 @@ from .configs import (
 )
 
 
-def electricity_nbeats() -> Setting:
+def electricity_nbeats(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-4,
         gradient_clip_val=0.1,
         dropout=0.1,
-        max_epochs=100,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
         widths=[256, 2048],
     )
 
-    setting = nbeats("electricity", model_config, training_config)
+    setting = nbeats(
+        "electricity", model_config, training_config, input_dir, output_dir
+    )
     return setting
 
 
-def traffic_nbeats() -> Setting:
+def traffic_nbeats(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-4,
         gradient_clip_val=0.1,
         dropout=0.1,
-        max_epochs=100,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
         widths=[256, 2048],
     )
 
-    setting = nbeats("traffic", model_config, training_config)
+    setting = nbeats("traffic", model_config, training_config, input_dir, output_dir)
     return setting
 
 
-def electricity_deepvar() -> Setting:
+def electricity_deepvar(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
         gradient_clip_val=0.1,
         dropout=0.1,
-        max_epochs=100,
     )
     model_config = DeepARConfig(
         hidden_size=30,
@@ -58,17 +65,20 @@ def electricity_deepvar() -> Setting:
         distribution="multinormal",
     )
 
-    setting = deepar("electricity", model_config, training_config)
+    setting = deepar(
+        "electricity", model_config, training_config, input_dir, output_dir
+    )
     return setting
 
 
-def traffic_deepvar() -> Setting:
+def traffic_deepvar(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
         gradient_clip_val=0.1,
         dropout=0.1,
-        max_epochs=100,
     )
     model_config = DeepARConfig(
         hidden_size=30,
@@ -76,34 +86,36 @@ def traffic_deepvar() -> Setting:
         distribution="multinormal",
     )
 
-    setting = deepar("traffic", model_config, training_config)
+    setting = deepar("traffic", model_config, training_config, input_dir, output_dir)
     return setting
 
 
-def traffic_deepar() -> Setting:
+def traffic_deepar(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
         gradient_clip_val=0.1,
         dropout=0.1,
-        max_epochs=100,
     )
     model_config = DeepARConfig(
         hidden_size=30,
         rnn_layers=2,
         distribution="beta",
     )
-    setting = deepar("traffic", model_config, training_config)
+    setting = deepar("traffic", model_config, training_config, input_dir, output_dir)
     return setting
 
 
-def electricity_tft() -> Setting:
+def electricity_tft(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-3,
         gradient_clip_val=0.01,
         dropout=0.1,
-        max_epochs=100,
     )
 
     model_config = TFTConfig(
@@ -112,17 +124,18 @@ def electricity_tft() -> Setting:
         attention_head_size=4,
     )
 
-    setting = tft("electricity", model_config, training_config)
+    setting = tft("electricity", model_config, training_config, input_dir, output_dir)
     return setting
 
 
-def traffic_tft() -> Setting:
+def traffic_tft(
+    input_dir: str | PathLike[str], output_dir: str | PathLike[str]
+) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-3,
         gradient_clip_val=100.0,
         dropout=0.3,
-        max_epochs=100,
     )
 
     model_config = TFTConfig(
@@ -131,5 +144,5 @@ def traffic_tft() -> Setting:
         attention_head_size=4,
     )
 
-    setting = tft("traffic", model_config, training_config)
+    setting = tft("traffic", model_config, training_config, input_dir, output_dir)
     return setting

@@ -29,6 +29,16 @@ def main():
         type=int,
         required=False,
     )
+    argparser.add_argument(
+        "--input-dir",
+        type=str,
+        default="datasets",
+    )
+    argparser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+    )
     args = argparser.parse_args()
 
     setting_creator = {
@@ -50,7 +60,7 @@ def main():
         pl.seed_everything(args.seed)
     torch.set_float32_matmul_precision("medium")
 
-    setting = setting_creator()
+    setting = setting_creator(args.input_dir, args.output_dir)
     setting.run()
 
 
