@@ -60,7 +60,10 @@ def nbeats_objective(dataset_name: Literal["electricity", "traffic"]):
 
         model_config = NBEATSConfig(
             expansion_coefficient_lengths=[3, 2],
-            widths=[256, trial.suggest_categorical("seasonal", [512, 2048])],
+            widths=[
+                trial.suggest_categorical("trend", [64, 256]),
+                trial.suggest_categorical("seasonality", [512, 2048]),
+            ],
         )
 
         training_config = _common_training_config(trial)
