@@ -53,6 +53,7 @@ def run(args):
 def find(args):
     import logging
     import sys
+    from pathlib import Path
 
     import lightning.pytorch as pl
     import optuna
@@ -101,9 +102,10 @@ def find(args):
 
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 
+    db_path = Path(args.output_dir, f"{args.storage}.db")
     study = optuna.create_study(
         study_name=f"{args.dataset}-{args.model}",
-        storage=args.storage,
+        storage=f"sqlite:///{db_path.absolute()}",
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=args.seed),
     )
@@ -182,7 +184,7 @@ def main():
     )
     finder_parser.add_argument(
         "--storage",
-        default="sqlite:///experiments.db",
+        default="experiments",
         type=str,
     )
     finder_parser.add_argument(
