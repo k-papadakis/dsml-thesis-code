@@ -21,7 +21,7 @@ from .configs import (
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
     return TrainingConfig(
         batch_size=128,
-        learning_rate=trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True),
+        learning_rate=1e-5,  # irrelevant, because it will be overridden
         gradient_clip_val=trial.suggest_float(
             "gradient_clip_val", 0.1, 100.0, log=True
         ),
@@ -78,6 +78,8 @@ def nbeats_objective(
         )
         _modify_setting(setting, trial)
 
+        lr = setting.find_lr()
+        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
         setting.fit()
 
         return setting.trainer.callback_metrics["val_loss"].item()
@@ -103,6 +105,9 @@ def tft_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
+
+        lr = setting.find_lr()
+        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
 
         setting.fit()
 
@@ -137,6 +142,8 @@ def deepar_objective(
         )
         _modify_setting(setting, trial)
 
+        lr = setting.find_lr()
+        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
         setting.fit()
 
         return setting.trainer.callback_metrics["val_loss"].item()

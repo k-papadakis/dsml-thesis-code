@@ -71,7 +71,6 @@ def electricity_deepvar(
     return setting
 
 
-# TODO
 def electricity_deepar(
     input_dir: str | PathLike[str], output_dir: str | PathLike[str]
 ) -> Setting:

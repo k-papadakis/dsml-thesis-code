@@ -66,12 +66,15 @@ class Setting:
     model: ForecastingModel
     trainer: pl.Trainer
 
-    def find_lr(self):
+    def find_lr(self) -> float:
         lr_finder: Optional[_LRFinder] = Tuner(self.trainer).lr_find(
             self.model, datamodule=self.datamodule, min_lr=1e-5, max_lr=1e-1
         )
         assert lr_finder is not None
         lr: float = lr_finder.suggestion()
+        return lr
+
+    def set_lr(self, lr: float) -> None:
         setattr(self.model.hparams, "learning_rate", lr)
 
     def fit(self):
