@@ -134,9 +134,9 @@ def electricity_tft(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-3,
-        gradient_clip_val=0.01,
-        dropout=0.1,
+        learning_rate=3e-3,
+        gradient_clip_val=50.0,
+        dropout=0.2,
     )
 
     model_config = TFTConfig(
@@ -154,13 +154,13 @@ def traffic_tft(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-3,
-        gradient_clip_val=100.0,
+        learning_rate=1e-2,
+        gradient_clip_val=1.0,
         dropout=0.3,
     )
 
     model_config = TFTConfig(
-        hidden_size=320,
+        hidden_size=80,
         lstm_layers=1,
         attention_head_size=4,
     )
