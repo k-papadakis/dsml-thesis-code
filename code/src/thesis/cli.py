@@ -1,7 +1,5 @@
 from argparse import ArgumentParser
 
-from thesis.objectives import deepvar_objective
-
 
 def run(args):
     import lightning.pytorch as pl
@@ -58,7 +56,12 @@ def find(args):
         pl.seed_everything(args.seed)
     torch.set_float32_matmul_precision("medium")
 
-    from .objectives import deepar_objective, nbeats_objective, tft_objective
+    from .objectives import (
+        deepar_objective,
+        deepvar_objective,
+        nbeats_objective,
+        tft_objective,
+    )
 
     objective = {
         ("electricity", "nbeats"): nbeats_objective(
@@ -162,13 +165,11 @@ def main():
     )
     finder_parser.add_argument(
         "--n-trials",
-        default=30,
         type=int,
         required=False,
     )
     finder_parser.add_argument(
         "--timeout",
-        default=1 * 60 * 60,
         type=int,
         required=False,
     )

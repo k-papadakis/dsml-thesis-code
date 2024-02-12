@@ -10,6 +10,7 @@ import torch.nn as nn
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.tuner.lr_finder import _LRFinder
 from lightning.pytorch.tuner.tuning import Tuner
+from lightning.pytorch.utilities.parsing import lightning_setattr
 from matplotlib import pyplot as plt
 from pytorch_forecasting import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting import BaseModel as ForecastingModel
@@ -78,13 +79,17 @@ class Setting:
 
     def find_lr(self, min_lr=1e-8, max_lr=1.0) -> Optional[float]:
         lr_finder: Optional[_LRFinder] = Tuner(self.trainer).lr_find(
-            self.model, datamodule=self.datamodule, min_lr=min_lr, max_lr=max_lr
+            self.model,
+            datamodule=self.datamodule,
+            min_lr=min_lr,
+            max_lr=max_lr,
+            update_attr=False,
         )
         assert lr_finder is not None
         return lr_finder.suggestion()
 
     def set_lr(self, lr: float) -> None:
-        setattr(self.model.hparams, "learning_rate", lr)
+        lightning_setattr(self.model, "learning_rate", lr)
 
     def fit(self):
         self.trainer.fit(self.model, datamodule=self.datamodule)

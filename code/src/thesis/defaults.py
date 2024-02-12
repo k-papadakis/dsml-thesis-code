@@ -57,14 +57,14 @@ def electricity_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
-        gradient_clip_val=0.3,
+        learning_rate=1e-3,
+        gradient_clip_val=2.0,
         dropout=0.1,
     )
     model_config = DeepVARConfig(
-        hidden_size=30,
+        hidden_size=120,
         rnn_layers=2,
-        rank=30,
+        rank=50,
     )
 
     setting = deepvar(
@@ -78,12 +78,12 @@ def electricity_deepar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
-        gradient_clip_val=0.3,
+        learning_rate=1e-3,
+        gradient_clip_val=2.0,
         dropout=0.1,
     )
     model_config = DeepARConfig(
-        hidden_size=30,
+        hidden_size=120,
         rnn_layers=2,
         distribution="normal",
     )
@@ -99,14 +99,14 @@ def traffic_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-4,
-        gradient_clip_val=0.3,
+        learning_rate=1e-2,
+        gradient_clip_val=40.0,
         dropout=0.1,
     )
     model_config = DeepVARConfig(
-        hidden_size=30,
+        hidden_size=120,
         rnn_layers=2,
-        rank=30,
+        rank=50,
     )
 
     setting = deepvar("traffic", model_config, training_config, input_dir, output_dir)
@@ -119,11 +119,11 @@ def traffic_deepar(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=1e-2,
-        gradient_clip_val=0.3,
-        dropout=0.1,
+        gradient_clip_val=40.0,
+        dropout=0.2,
     )
     model_config = DeepARConfig(
-        hidden_size=30,
+        hidden_size=120,
         rnn_layers=2,
         distribution="beta",
     )
