@@ -20,12 +20,12 @@ def electricity_nbeats(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=5e-4,
-        gradient_clip_val=1.0,
-        dropout=0.2,
+        gradient_clip_val=4.0,
+        dropout=0.3,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
-        widths=[64, 512],
+        widths=[64, 2048],
     )
 
     setting = nbeats(
@@ -39,13 +39,13 @@ def traffic_nbeats(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=7e-4,
-        gradient_clip_val=30.0,
-        dropout=0.1,
+        learning_rate=8e-4,
+        gradient_clip_val=1.0,
+        dropout=0.3,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 2],
-        widths=[64, 512],
+        widths=[256, 2048],
     )
 
     setting = nbeats("traffic", model_config, training_config, input_dir, output_dir)
@@ -101,7 +101,7 @@ def traffic_deepvar(
         batch_size=128,
         learning_rate=1e-2,
         gradient_clip_val=40.0,
-        dropout=0.1,
+        dropout=0.2,
     )
     model_config = DeepVARConfig(
         hidden_size=120,
