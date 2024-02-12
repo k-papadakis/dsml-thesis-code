@@ -23,11 +23,12 @@ from .ptf_api import (
 def _find_and_set_lr(setting: Setting, trial: optuna.Trial) -> None:
     found_lr = setting.find_lr()
     if found_lr is None or found_lr > 1e-2:
-        print("Suggesting learning rate in log scale between 1e-4 and 1e-2.")
-        lr = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+        min_lr, max_lr = 1e-4, 1e-2
+        print(f"Suggesting learning rate in log scale between {min_lr} and {max_lr}.")
     else:
-        lr = trial.suggest_float("learning_rate", found_lr, found_lr)
-    setting.set_lr(lr)
+        min_lr, max_lr = found_lr, found_lr
+
+    setting.set_lr(trial.suggest_float("learning_rate", min_lr, max_lr, log=True))
 
 
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
