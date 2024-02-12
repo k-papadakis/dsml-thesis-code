@@ -25,7 +25,7 @@ from pytorch_forecasting import (
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from .dataloading import SeriesDataModule
-from .metrics import METRICS
+from .metrics import compute_metrics
 
 
 class ModelConfig:
@@ -55,6 +55,7 @@ class TFTConfig(ModelConfig):
 
 @dataclass
 class DeepARConfig(ModelConfig):
+    # TODO: Separate DeepAR and DeepVAR. Add parameter for multivariate normal size.
     hidden_size: int
     rnn_layers: int
     distribution: Literal["beta", "normal", "multinormal"]
@@ -95,7 +96,6 @@ class Setting:
         return type(self.model).load_from_checkpoint(best_model_path)
 
     def evaluate(self) -> None:
-        # TODO: best_model.plot_prediction_actual_by_variable (BasemodelWithCovariates method)
         best_model = self.load_best()
         test_dataset = self.datamodule.test
         summary_writer = self.summary_writer()
@@ -152,8 +152,8 @@ class Setting:
             plt.hist(corr[corr < 1], edgecolor="black")
             summary_writer.add_figure("correlation_histogram", fig)
 
-        # TFT
-        elif isinstance(best_model, TemporalFusionTransformer):
+        # TFT, DeepAR, DeepVAR
+        elif isinstance(best_model, ForecastingModel):
             predictions_vs_actuals = best_model.calculate_prediction_actual_by_variable(
                 out.x, out.output.prediction
             )
@@ -267,7 +267,6 @@ def deepar(
         loss=loss,
         dropout=training_config.dropout,
         log_interval=200,
-        # TODO: Add quantiles loss here? Will it error?
         logging_metrics=nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]),
     )
 
@@ -353,14 +352,11 @@ def performance(
     ys_pred: Iterable[torch.Tensor],
 ) -> pd.DataFrame:
     perf = {
-        metric_fn.__name__: {
-            name: metric_fn(
-                y_true.cpu(),
-                # the mean is for either the DeepAR samples or the TFT quantiles
-                (y_pred.mean(-1) if y_pred.dim() == 2 else y_pred).cpu(),
-            ).item()
-            for name, y_true, y_pred in zip(names, ys_true, ys_pred)
-        }
-        for metric_fn in METRICS
+        name: compute_metrics(
+            y_true.cpu(),
+            # the mean is for either the DeepAR samples or the TFT quantiles
+            (y_pred.mean(-1) if y_pred.dim() == 2 else y_pred).cpu(),
+        )
+        for name, y_true, y_pred in zip(names, ys_true, ys_pred)
     }
-    return pd.DataFrame(perf)
+    return pd.DataFrame(perf).T

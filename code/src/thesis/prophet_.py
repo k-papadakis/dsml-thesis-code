@@ -14,7 +14,7 @@ from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
 from prophet.plot import add_changepoints_to_plot, plot_cross_validation_metric
 
-from .metrics import METRICS
+from .metrics import compute_metrics
 
 ParamDict: TypeAlias = dict[str, Any]
 ParamGrid: TypeAlias = dict[str, list[Any]]
@@ -66,9 +66,7 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     # Performance csv
     y_pred = forecast.iloc[-len(series.test) :]["yhat"].values
     y_true = series.test["y"].values
-    performance = {
-        metric_fn.__name__: metric_fn(y_true, y_pred) for metric_fn in METRICS
-    }
+    performance = compute_metrics(y_true, y_pred)
     pd.Series(performance).to_frame().T.to_csv(path / "performance.csv", index=False)
 
     # Model image

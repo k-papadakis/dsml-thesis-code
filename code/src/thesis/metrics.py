@@ -43,4 +43,13 @@ def mase(y_true, y_pred):
     return np.mean(np.abs(y_true - y_pred) / np.mean(np.abs(y_true[1:] - y_true[:-1])))
 
 
-METRICS = (mse, rmse, mae, mape, mdape, smape, mase)
+def compute_metrics(y_true, y_pred):
+    return {
+        "mse": mse(y_true, y_pred),
+        "rmse": rmse(y_true, y_pred),
+        "mae": mae(y_true, y_pred),
+        "mape": mape(y_true, y_pred),
+        "mdape": mdape(y_true, y_pred),
+        "smape": smape(y_true, y_pred),
+        "mase": mase(y_true, y_pred),
+    }
