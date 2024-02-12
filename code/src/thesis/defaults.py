@@ -2,11 +2,13 @@ from os import PathLike
 
 from .configs import (
     DeepARConfig,
+    DeepVARConfig,
     NBEATSConfig,
     Setting,
     TFTConfig,
     TrainingConfig,
     deepar,
+    deepvar,
     nbeats,
     tft,
 )
@@ -59,13 +61,13 @@ def electricity_deepvar(
         gradient_clip_val=0.3,
         dropout=0.1,
     )
-    model_config = DeepARConfig(
+    model_config = DeepVARConfig(
         hidden_size=30,
         rnn_layers=2,
-        distribution="multinormal",
+        rank=30,
     )
 
-    setting = deepar(
+    setting = deepvar(
         "electricity", model_config, training_config, input_dir, output_dir
     )
     return setting
@@ -97,17 +99,17 @@ def traffic_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
+        learning_rate=1e-4,
         gradient_clip_val=0.3,
         dropout=0.1,
     )
-    model_config = DeepARConfig(
+    model_config = DeepVARConfig(
         hidden_size=30,
         rnn_layers=2,
-        distribution="multinormal",
+        rank=30,
     )
 
-    setting = deepar("traffic", model_config, training_config, input_dir, output_dir)
+    setting = deepvar("traffic", model_config, training_config, input_dir, output_dir)
     return setting
 
 

@@ -14,6 +14,9 @@ from matplotlib import pyplot as plt
 from pytorch_forecasting import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting import BaseModel as ForecastingModel
 from pytorch_forecasting import (
+    BaseModelWithCovariates as ForecastingModelWithCovariates,
+)
+from pytorch_forecasting import (
     BetaDistributionLoss,
     DeepAR,
     MultivariateNormalDistributionLoss,
@@ -28,16 +31,16 @@ from .dataloading import SeriesDataModule
 from .metrics import compute_metrics
 
 
-class ModelConfig:
-    pass
-
-
 @dataclass
 class TrainingConfig:
     batch_size: int
     learning_rate: float
     gradient_clip_val: float
     dropout: float
+
+
+class ModelConfig:
+    pass
 
 
 @dataclass
@@ -54,11 +57,17 @@ class TFTConfig(ModelConfig):
 
 
 @dataclass
-class DeepARConfig(ModelConfig):
-    # TODO: Separate DeepAR and DeepVAR. Add parameter for multivariate normal size.
+class DeepVARConfig(ModelConfig):
     hidden_size: int
     rnn_layers: int
-    distribution: Literal["beta", "normal", "multinormal"]
+    rank: int
+
+
+@dataclass
+class DeepARConfig(ModelConfig):
+    hidden_size: int
+    rnn_layers: int
+    distribution: Literal["beta", "normal"]
 
 
 @dataclass
@@ -67,13 +76,12 @@ class Setting:
     model: ForecastingModel
     trainer: pl.Trainer
 
-    def find_lr(self) -> float:
+    def find_lr(self, min_lr=1e-8, max_lr=1.0) -> Optional[float]:
         lr_finder: Optional[_LRFinder] = Tuner(self.trainer).lr_find(
-            self.model, datamodule=self.datamodule, min_lr=1e-5, max_lr=1e-1
+            self.model, datamodule=self.datamodule, min_lr=min_lr, max_lr=max_lr
         )
         assert lr_finder is not None
-        lr: float = lr_finder.suggestion()
-        return lr
+        return lr_finder.suggestion()
 
     def set_lr(self, lr: float) -> None:
         setattr(self.model.hparams, "learning_rate", lr)
@@ -153,7 +161,7 @@ class Setting:
             summary_writer.add_figure("correlation_histogram", fig)
 
         # TFT, DeepAR, DeepVAR
-        elif isinstance(best_model, ForecastingModel):
+        elif isinstance(best_model, ForecastingModelWithCovariates):
             predictions_vs_actuals = best_model.calculate_prediction_actual_by_variable(
                 out.x, out.output.prediction
             )
@@ -229,16 +237,12 @@ def deepar(
 ) -> Setting:
 
     input_dir = Path(input_dir, name)
-    output_dir = Path(
-        output_dir,
-        name,
-        "deepvar" if model_config.distribution == "multinormal" else "deepar",
-    )
+    output_dir = Path(output_dir, name, "deepar")
 
     datamodule = SeriesDataModule(
         name=name,
         path=input_dir,
-        multivariate=model_config.distribution == "multinormal",
+        multivariate=False,
         with_covariates=True,
         transform="auto" if model_config.distribution != "beta" else "logit",
         batch_size=training_config.batch_size,
@@ -252,12 +256,66 @@ def deepar(
         loss = BetaDistributionLoss(quantiles=quantiles)
     elif model_config.distribution == "normal":
         loss = NormalDistributionLoss(quantiles=quantiles)
-    elif model_config.distribution == "multinormal":
-        loss = MultivariateNormalDistributionLoss(
-            quantiles=quantiles, rank=model_config.hidden_size
-        )
     else:
         raise ValueError(f"Unknown distribution: {model_config.distribution}")
+
+    model: ForecastingModel = DeepAR.from_dataset(  # type: ignore
+        test_dataset,
+        learning_rate=training_config.learning_rate,
+        hidden_size=model_config.hidden_size,
+        rnn_layers=model_config.rnn_layers,
+        loss=loss,
+        dropout=training_config.dropout,
+        log_interval=200,
+        logging_metrics=nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]),
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss",
+        min_delta=1e-4,
+        patience=5,
+        mode="min",
+        verbose=False,
+    )
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min", verbose=False)
+    trainer = pl.Trainer(
+        max_epochs=100,
+        callbacks=[early_stop_callback, checkpoint_callback],
+        gradient_clip_val=training_config.gradient_clip_val,
+        gradient_clip_algorithm="norm",
+        default_root_dir=str(output_dir),
+    )
+
+    return Setting(datamodule, model, trainer)
+
+
+def deepvar(
+    name: Literal["electricity", "traffic"],
+    model_config: DeepVARConfig,
+    training_config: TrainingConfig,
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
+) -> Setting:
+
+    input_dir = Path(input_dir, name)
+    output_dir = Path(output_dir, name, "deepvar")
+
+    datamodule = SeriesDataModule(
+        name=name,
+        path=input_dir,
+        multivariate=True,
+        with_covariates=True,
+        transform="auto",
+        batch_size=training_config.batch_size,
+    )
+    datamodule.prepare_data()
+    datamodule.setup("test")
+    test_dataset = datamodule.test
+
+    quantiles = [0.1, 0.5, 0.9]
+    loss = MultivariateNormalDistributionLoss(
+        quantiles=quantiles, rank=model_config.rank
+    )
 
     model: ForecastingModel = DeepAR.from_dataset(  # type: ignore
         test_dataset,

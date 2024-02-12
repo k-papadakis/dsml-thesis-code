@@ -8,14 +8,26 @@ from optuna.integration import PyTorchLightningPruningCallback
 
 from .configs import (
     DeepARConfig,
+    DeepVARConfig,
     NBEATSConfig,
     Setting,
     TFTConfig,
     TrainingConfig,
     deepar,
+    deepvar,
     nbeats,
     tft,
 )
+
+
+def _find_and_set_lr(setting: Setting, trial: optuna.Trial) -> None:
+    found_lr = setting.find_lr()
+    if found_lr is None or found_lr > 1e-2:
+        print("Suggesting learning rate in log scale between 1e-4 and 1e-2.")
+        lr = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
+    else:
+        lr = trial.suggest_float("learning_rate", found_lr, found_lr)
+    setting.set_lr(lr)
 
 
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
@@ -63,7 +75,6 @@ def nbeats_objective(
     output_dir: str | PathLike[str],
 ):
     def inner(trial: optuna.Trial) -> float:
-
         model_config = NBEATSConfig(
             expansion_coefficient_lengths=[3, 2],
             widths=[
@@ -77,9 +88,8 @@ def nbeats_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
+        _find_and_set_lr(setting, trial)
 
-        lr = setting.find_lr()
-        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
         setting.fit()
 
         return setting.trainer.callback_metrics["val_loss"].item()
@@ -93,7 +103,6 @@ def tft_objective(
     output_dir: str | PathLike[str],
 ):
     def inner(trial: optuna.Trial) -> float:
-
         model_config = TFTConfig(
             hidden_size=trial.suggest_categorical("hidden_size", [80, 160, 320]),
             lstm_layers=1,
@@ -105,9 +114,7 @@ def tft_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-
-        lr = setting.find_lr()
-        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
+        _find_and_set_lr(setting, trial)
 
         setting.fit()
 
@@ -118,7 +125,7 @@ def tft_objective(
 
 def deepar_objective(
     dataset_name: Literal["electricity", "traffic"],
-    distribution: Literal["multinormal", "normal", "beta"],
+    distribution: Literal["normal", "beta"],
     input_dir: str | PathLike[str],
     output_dir: str | PathLike[str],
 ):
@@ -131,7 +138,7 @@ def deepar_objective(
     def inner(trial: optuna.Trial) -> float:
 
         model_config = DeepARConfig(
-            hidden_size=trial.suggest_categorical("hidden_size", [10, 30]),
+            hidden_size=trial.suggest_categorical("hidden_size", [30, 60, 120]),
             rnn_layers=2,
             distribution=distribution,
         )
@@ -141,10 +148,34 @@ def deepar_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
+        _find_and_set_lr(setting, trial)
 
-        lr = setting.find_lr()
-        setting.set_lr(trial.suggest_float("learning_rate", lr, lr))
         setting.fit()
+
+        return setting.trainer.callback_metrics["val_loss"].item()
+
+    return inner
+
+
+def deepvar_objective(
+    dataset_name: Literal["electricity", "traffic"],
+    input_dir: str | PathLike[str],
+    output_dir: str | PathLike[str],
+):
+
+    def inner(trial: optuna.Trial) -> float:
+        model_config = DeepVARConfig(
+            hidden_size=trial.suggest_categorical("hidden_size", [30, 60, 120]),
+            rnn_layers=2,
+            rank=30,
+        )
+
+        training_config = _common_training_config(trial)
+        setting = deepvar(
+            dataset_name, model_config, training_config, input_dir, output_dir
+        )
+        _modify_setting(setting, trial)
+        _find_and_set_lr(setting, trial)
 
         return setting.trainer.callback_metrics["val_loss"].item()
 

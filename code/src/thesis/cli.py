@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+from thesis.objectives import deepvar_objective
+
 
 def run(args):
     import lightning.pytorch as pl
@@ -38,7 +40,9 @@ def run(args):
 
     setting = setting_creator(args.input_dir, args.output_dir)
     if args.find_lr:
-        setting.find_lr()
+        lr = setting.find_lr()
+        if lr is not None:
+            setting.set_lr(lr)
     setting.run()
 
 
@@ -60,8 +64,11 @@ def find(args):
         ("electricity", "nbeats"): nbeats_objective(
             "electricity", args.input_dir, args.output_dir
         ),
-        ("electricity", "deepvar"): deepar_objective(
-            "traffic", "multinormal", args.input_dir, args.output_dir
+        ("electricity", "deepar"): deepar_objective(
+            "electricity", "normal", args.input_dir, args.output_dir
+        ),
+        ("electricity", "deepvar"): deepvar_objective(
+            "electricity", args.input_dir, args.output_dir
         ),
         ("electricity", "tft"): tft_objective(
             "electricity", args.input_dir, args.output_dir
@@ -69,11 +76,11 @@ def find(args):
         ("traffic", "nbeats"): nbeats_objective(
             "traffic", args.input_dir, args.output_dir
         ),
-        ("traffic", "deepvar"): deepar_objective(
-            "traffic", "multinormal", args.input_dir, args.output_dir
-        ),
         ("traffic", "deepar"): deepar_objective(
             "traffic", "beta", args.input_dir, args.output_dir
+        ),
+        ("traffic", "deepvar"): deepvar_objective(
+            "traffic", args.input_dir, args.output_dir
         ),
         ("traffic", "tft"): tft_objective("traffic", args.input_dir, args.output_dir),
     }.get((args.dataset, args.model), None)
