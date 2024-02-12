@@ -102,7 +102,11 @@ def find(args):
 
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
 
-    db_path = Path(args.output_dir, f"{args.storage}.db")
+    output_dir = Path(args.output_dir)
+    if not output_dir.is_dir():
+        output_dir.mkdir(parents=True)
+    db_path = output_dir / f"{args.dbname}.db"
+
     study = optuna.create_study(
         study_name=f"{args.dataset}-{args.model}",
         storage=f"sqlite:///{db_path.absolute()}",
@@ -183,7 +187,7 @@ def main():
         choices=["tft", "nbeats", "deepvar", "deepar"],
     )
     finder_parser.add_argument(
-        "--storage",
+        "--dbname",
         default="experiments",
         type=str,
     )
