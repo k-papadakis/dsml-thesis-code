@@ -20,16 +20,145 @@ from pytorch_forecasting import (
 from pytorch_forecasting import (
     BetaDistributionLoss,
     DeepAR,
+    EncoderNormalizer,
     MultivariateNormalDistributionLoss,
     NBeats,
     NormalDistributionLoss,
     QuantileLoss,
     TemporalFusionTransformer,
+    TimeSeriesDataSet,
 )
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from .dataloading import SeriesDataModule
+from .dataloading import download_and_extract_zip, load_electricity, load_traffic
 from .metrics import compute_metrics
+
+
+class SeriesDataModule(pl.LightningDataModule):
+    def __init__(
+        self,
+        name: Literal["electricity", "traffic"],
+        path: str | PathLike,
+        multivariate: bool,
+        with_covariates: bool,
+        transform: Literal["auto", "logit"],
+        batch_size: int,
+    ):
+        super().__init__()
+
+        self.name = name
+        self.path = Path(path)
+        self.multivariate = multivariate
+        self.with_covariates = with_covariates
+        self.transform = transform
+        self.batch_size = batch_size
+
+    def prepare_data(self):
+        if self.path.is_dir():
+            return
+
+        if self.name == "electricity":
+            url = "https://archive.ics.uci.edu/static/public/321/electricityloaddiagrams20112014.zip"
+        elif self.name == "traffic":
+            url = "https://archive.ics.uci.edu/static/public/204/pems+sf.zip"
+        else:
+            raise ValueError(f"Unknown dataset name: {self.name}")
+
+        print(f"Dataset {self.name} not found in {self.path}.")
+        print(f"Downloading dataset {self.name} from {url} to {self.path}.")
+        download_and_extract_zip(url, self.path)
+        print(f"Downloaded dataset {self.name} to {self.path}.")
+
+    def setup(self, stage: str):
+        if self.name == "electricity":
+            loader = load_electricity
+        elif self.name == "traffic":
+            loader = load_traffic
+        else:
+            raise ValueError(f"Unknown dataset name: {self.name}")
+
+        data, freq = loader(self.path)
+        data = (
+            data.dropna()
+            .reset_index()
+            .reset_index()
+            .rename(columns={"index": "time_idx"})
+            .set_index(["time_idx", "date"])
+            .rename_axis("series", axis="columns")
+            .stack()
+            .rename("value")  # type: ignore
+            .reset_index()
+        )
+        data["weekday"] = data["date"].dt.weekday.astype("string").astype("category")
+        data["hour"] = data["date"].dt.hour.astype("string").astype("category")
+        data["series"] = data["series"].astype("string").astype("category")
+
+        horizon = pd.Timedelta(1, "day")
+
+        output_length = horizon // freq
+        input_length = 7 * output_length
+        validation_cutoff = data["time_idx"].max() - output_length
+        training_cutoff = validation_cutoff - 21 * output_length
+
+        if self.transform == "logit":
+            target_normalizer = EncoderNormalizer(
+                method="identity", transformation="logit"
+            )
+        elif self.transform == "auto":
+            target_normalizer = "auto"
+        else:
+            raise ValueError(f"Unknown transform method: {self.transform}")
+
+        self.train = TimeSeriesDataSet(
+            data[data["time_idx"] <= training_cutoff],
+            time_idx="time_idx",
+            target="value",
+            group_ids=["series"],
+            time_varying_unknown_reals=["value"],
+            max_encoder_length=input_length,
+            max_prediction_length=output_length,
+            time_varying_known_categoricals=(
+                ["hour", "weekday"] if self.with_covariates else []
+            ),
+            static_categoricals=["series"] if self.with_covariates else [],
+            target_normalizer=target_normalizer,
+        )
+        self.val = TimeSeriesDataSet.from_dataset(
+            self.train,
+            data[data["time_idx"] <= validation_cutoff],
+            min_prediction_idx=training_cutoff + 1,
+        )
+        self.test = TimeSeriesDataSet.from_dataset(
+            self.train,
+            data,
+            # min_prediction_idx=validation_cutoff + 1,
+            predict=True,
+        )
+
+    def train_dataloader(self) -> DataLoader:
+        return self.train.to_dataloader(
+            train=True,
+            batch_sampler="synchronized" if self.multivariate else None,  # type: ignore
+            batch_size=self.batch_size,
+            num_workers=2,
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        return self.val.to_dataloader(
+            train=False,
+            batch_sampler="synchronized" if self.multivariate else None,  # type: ignore
+            batch_size=self.batch_size,
+            num_workers=2,
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        return self.test.to_dataloader(
+            train=False,
+            batch_sampler="synchronized" if self.multivariate else None,  # type: ignore
+            batch_size=self.batch_size,
+            num_workers=0,
+        )
 
 
 @dataclass

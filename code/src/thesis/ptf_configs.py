@@ -1,6 +1,6 @@
 from os import PathLike
 
-from .configs import (
+from .ptf_api import (
     DeepARConfig,
     DeepVARConfig,
     NBEATSConfig,

@@ -6,7 +6,7 @@ import optuna
 from lightning.pytorch.callbacks import EarlyStopping
 from optuna.integration import PyTorchLightningPruningCallback
 
-from .configs import (
+from .ptf_api import (
     DeepARConfig,
     DeepVARConfig,
     NBEATSConfig,

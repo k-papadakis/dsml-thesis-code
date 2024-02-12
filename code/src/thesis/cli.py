@@ -1,6 +1,12 @@
 from argparse import ArgumentParser
 
 
+def prophet(args):
+    from .prophet_api import run as prophet_run
+
+    prophet_run(args.dataset, args.input_dir, args.output_dir)
+
+
 def run(args):
     import lightning.pytorch as pl
     import torch
@@ -9,7 +15,7 @@ def run(args):
         pl.seed_everything(args.seed)
     torch.set_float32_matmul_precision("medium")
 
-    from .defaults import (
+    from .ptf_configs import (
         electricity_deepar,
         electricity_deepvar,
         electricity_nbeats,
@@ -56,7 +62,7 @@ def find(args):
         pl.seed_everything(args.seed)
     torch.set_float32_matmul_precision("medium")
 
-    from .objectives import (
+    from .ptf_objectives import (
         deepar_objective,
         deepvar_objective,
         nbeats_objective,
@@ -116,7 +122,25 @@ def main():
 
     subparsers = argparser.add_subparsers()
 
-    # Runner
+    # prophet
+    prophet_parser = subparsers.add_parser("prophet")
+    prophet_parser.add_argument(
+        "dataset",
+        choices=["electricity", "traffic"],
+    )
+    prophet_parser.add_argument(
+        "--input-dir",
+        type=str,
+        default="datasets",
+    )
+    prophet_parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="output",
+    )
+    prophet_parser.set_defaults(func=prophet)
+
+    # run
     runner_parser = subparsers.add_parser("run")
     runner_parser.add_argument(
         "dataset",
@@ -129,7 +153,6 @@ def main():
     runner_parser.add_argument(
         "--seed",
         type=int,
-        required=False,
     )
     runner_parser.add_argument(
         "--input-dir",
@@ -147,7 +170,7 @@ def main():
     )
     runner_parser.set_defaults(func=run)
 
-    # Finder
+    # find
     finder_parser = subparsers.add_parser("find")
     finder_parser.add_argument(
         "dataset",
@@ -161,22 +184,18 @@ def main():
         "--storage",
         default="sqlite:///experiments.db",
         type=str,
-        required=False,
     )
     finder_parser.add_argument(
         "--n-trials",
         type=int,
-        required=False,
     )
     finder_parser.add_argument(
         "--timeout",
         type=int,
-        required=False,
     )
     finder_parser.add_argument(
         "--seed",
         type=int,
-        required=False,
     )
     finder_parser.add_argument(
         "--input-dir",
