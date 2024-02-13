@@ -24,7 +24,7 @@ def electricity_nbeats(
         dropout=0.3,
     )
     model_config = NBEATSConfig(
-        expansion_coefficient_lengths=[3, 2],
+        expansion_coefficient_lengths=[3, 3],
         widths=[64, 2048],
     )
 
@@ -44,7 +44,7 @@ def traffic_nbeats(
         dropout=0.3,
     )
     model_config = NBEATSConfig(
-        expansion_coefficient_lengths=[3, 2],
+        expansion_coefficient_lengths=[3, 3],
         widths=[256, 2048],
     )
 
