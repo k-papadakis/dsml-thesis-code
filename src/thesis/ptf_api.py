@@ -31,7 +31,13 @@ from pytorch_forecasting import (
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from .dataloading import download_and_extract_zip, load_electricity, load_traffic
+from .dataloading import (
+    ELECTRICITY_URL,
+    TRAFFIC_URL,
+    download_and_extract_zip,
+    load_electricity,
+    load_traffic,
+)
 from .metrics import compute_metrics
 
 
@@ -59,16 +65,16 @@ class SeriesDataModule(pl.LightningDataModule):
             return
 
         if self.name == "electricity":
-            url = "https://archive.ics.uci.edu/static/public/321/electricityloaddiagrams20112014.zip"
+            url = ELECTRICITY_URL
         elif self.name == "traffic":
-            url = "https://archive.ics.uci.edu/static/public/204/pems+sf.zip"
+            url = TRAFFIC_URL
         else:
             raise ValueError(f"Unknown dataset name: {self.name}")
 
-        print(f"Dataset {self.name} not found in {self.path}.")
-        print(f"Downloading dataset {self.name} from {url} to {self.path}.")
+        print(f"Dataset {self.name} not found in {self.path}")
+        print(f"Downloading dataset {self.name} from {url} to {self.path}")
         download_and_extract_zip(url, self.path)
-        print(f"Downloaded dataset {self.name} to {self.path}.")
+        print(f"Downloaded dataset {self.name} to {self.path}")
 
     def setup(self, stage: str):
         if self.name == "electricity":

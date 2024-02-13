@@ -12,6 +12,10 @@ pd.set_option("future.infer_string", True)
 pd.set_option("future.no_silent_downcasting", True)
 
 
+ELECTRICITY_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00321/LD2011_2014.txt.zip"
+TRAFFIC_URL = "https://archive.ics.uci.edu/static/public/204/pems+sf.zip"
+
+
 def download_and_extract_zip(zipurl: str, path: str | PathLike[str]) -> None:
     with urlopen(zipurl) as zipresp:
         with ZipFile(BytesIO(zipresp.read())) as zfile:
@@ -25,7 +29,6 @@ def load_electricity(
     end_time=pd.Timestamp(2014, 9, 1),
     components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
-    """https://archive.ics.uci.edu/ml/machine-learning-databases/00321/LD2011_2014.txt.zip"""
 
     path = Path(path, "LD2011_2014.txt")
 
@@ -56,7 +59,6 @@ def load_traffic(
     end_time=pd.Timestamp(2008, 6, 25),
     components=slice(50),
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
-    """https://archive.ics.uci.edu/dataset/204/pems-sf"""
 
     def load_perms(path: PathLike) -> tuple[np.ndarray, np.ndarray]:
         with open(path) as f:

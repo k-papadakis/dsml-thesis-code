@@ -1,6 +1,8 @@
 datasets/
 output/
+lightning_logs/
 *.ckpt
+
 .vscode
 
 # Byte-compiled / optimized / DLL files

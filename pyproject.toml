@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thesis"
-version = "0.0.1"
+version = "1.0.0"
 authors = [
     { name = "Konstantinos Papadakis", email = "k.i.papadakis@gmail.com" },
 ]
@@ -16,7 +16,17 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["pytorch-forecasting", "prophet", "optuna", "pyarrow"]
+dependencies = [
+    "pytorch-forecasting >= 1.0.0",
+    "prophet >= 1.1.5",
+    "optuna >= 3.5.0",
+    "pyarrow >= 15.0.0",
+    "tensorboard >= 2.16.0",
+]
+
+[project.optional-dependencies]
+plotly = ["plotly"]
+tensorboard = ["torch-tb-profiler"]
 
 [project.scripts]
 thesis = "thesis.cli:main"

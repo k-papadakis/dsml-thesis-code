@@ -9,7 +9,13 @@ from typing import Any, Literal, TypeAlias
 
 import numpy as np
 
-from thesis.dataloading import load_electricity, load_traffic
+from thesis.dataloading import (
+    ELECTRICITY_URL,
+    TRAFFIC_URL,
+    download_and_extract_zip,
+    load_electricity,
+    load_traffic,
+)
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -193,6 +199,7 @@ def run(
     output_dir = Path(output_dir, dataset_name, "prophet")
 
     if dataset_name == "electricity":
+        url = ELECTRICITY_URL
         loader = load_electricity
         assigner: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df
         param_grid = {
@@ -201,6 +208,7 @@ def run(
         }
         initial_horizons = 205  # 210
     elif dataset_name == "traffic":
+        url = TRAFFIC_URL
         loader = load_traffic
         assigner: Callable[[pd.DataFrame], pd.DataFrame] = lambda df: df.assign(
             floor=0.0, cap=1.0
@@ -213,6 +221,13 @@ def run(
         initial_horizons = 169  # 174
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+        print(f"Dataset {dataset_name} not found in {input_dir}")
+        print(f"Downloading dataset {dataset_name} from {url} to {input_dir}")
+        download_and_extract_zip(url, input_dir)
+        print(f"Downloaded dataset {dataset_name} to {input_dir}")
 
     df, freq = loader(input_dir)
     df = df.replace(0.0, np.nan)
