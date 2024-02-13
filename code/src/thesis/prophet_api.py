@@ -179,6 +179,16 @@ def run(
     input_dir: str | PathLike[str],
     output_dir: str | PathLike[str],
 ):
+    import logging
+
+    import tqdm
+
+    # Disable Stan spam
+    logger = logging.getLogger("cmdstanpy")
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+    logger.setLevel(logging.WARNING)
+
     input_dir = Path(input_dir, dataset_name)
     output_dir = Path(output_dir, dataset_name, "prophet")
 
@@ -216,8 +226,14 @@ def run(
         )
         for name, s in df.items()
     )
+    series_iter_with_progress_bar = tqdm.tqdm(
+        series_iter,
+        total=len(df.columns),
+        desc=f"Prophet {dataset_name}",
+    )
+    for series in series_iter_with_progress_bar:
+        series_iter_with_progress_bar.set_postfix_str(f"series: {series.name}")
 
-    for series in series_iter:
         path = output_dir / series.name
         path.mkdir(parents=True, exist_ok=False)
 
@@ -227,8 +243,6 @@ def run(
         cv_result.save(path)
 
         save_model_results(path, series, cv_result.params)
-
-        print(f"FINISHED {series.name}")
 
     results = pd.DataFrame.from_dict(
         {

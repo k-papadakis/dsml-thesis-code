@@ -124,7 +124,7 @@ def load_traffic(
     df = pd.DataFrame(
         data.reshape((-1, data.shape[-1])),
         index=datetime_index,
-        columns=stations,
+        columns=stations.astype(str),
     )
     df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
