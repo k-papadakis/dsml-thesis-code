@@ -84,7 +84,9 @@ class SeriesDataModule(pl.LightningDataModule):
         else:
             raise ValueError(f"Unknown dataset name: {self.name}")
 
-        data, freq = loader(self.path)
+        data = loader(self.path)
+        freq = pd.Timedelta(data.index.freq)  # type: ignore
+
         data = (
             data.dropna()
             .reset_index()

@@ -229,14 +229,14 @@ def run(
         download_and_extract_zip(url, input_dir)
         print(f"Downloaded dataset {dataset_name} to {input_dir}")
 
-    df, freq = loader(input_dir)
+    df = loader(input_dir)
     df = df.replace(0.0, np.nan)
 
     series_iter = (
         Series(
             str(name),
             s.reset_index().rename(columns={"date": "ds", name: "y"}).pipe(assigner),
-            freq,
+            pd.Timedelta(df.index.freq),  # type: ignore
             pd.Timedelta(1, "day"),
         )
         for name, s in df.items()

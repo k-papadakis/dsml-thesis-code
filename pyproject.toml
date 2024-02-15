@@ -8,7 +8,7 @@ version = "1.0.0"
 authors = [
     { name = "Konstantinos Papadakis", email = "k.i.papadakis@gmail.com" },
 ]
-description = "A small example package"
+description = "Thesis project for the MSc in Data Science and Machine Learning at the National Technical University of Athens"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -20,12 +20,11 @@ dependencies = [
     "pytorch-forecasting >= 1.0.0",
     "prophet >= 1.1.5",
     "optuna >= 3.5.0",
-    "pyarrow >= 15.0.0",
     "tensorboard >= 2.16.0",
 ]
 
 [project.optional-dependencies]
-plotly = ["plotly"]
+plot = ["plotly,seaborn"]
 tensorboard = ["torch-tb-profiler"]
 
 [project.scripts]

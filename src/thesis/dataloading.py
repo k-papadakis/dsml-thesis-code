@@ -28,7 +28,7 @@ def load_electricity(
     start_time=pd.Timestamp(2014, 2, 1),
     end_time=pd.Timestamp(2014, 9, 1),
     components=slice(50),
-) -> tuple[pd.DataFrame, pd.Timedelta]:
+) -> pd.DataFrame:
 
     path = Path(path, "LD2011_2014.txt")
 
@@ -38,8 +38,6 @@ def load_electricity(
         index_col=0,
         parse_dates=True,
         decimal=",",
-        engine="pyarrow",
-        dtype_backend="pyarrow",
     )
     df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
@@ -49,7 +47,7 @@ def load_electricity(
     assert df.notna().all(axis=None), "There are missing values in the dataset."
     assert df.index.diff()[1:].nunique() == 1, "The dataset is not uniformly sampled."  # type: ignore
 
-    return df, freq
+    return df
 
 
 def load_traffic(
@@ -58,7 +56,7 @@ def load_traffic(
     start_time=pd.Timestamp(2008, 1, 1),
     end_time=pd.Timestamp(2008, 6, 25),
     components=slice(50),
-) -> tuple[pd.DataFrame, pd.Timedelta]:
+) -> pd.DataFrame:
 
     def load_perms(path: PathLike) -> tuple[np.ndarray, np.ndarray]:
         with open(path) as f:
@@ -131,4 +129,4 @@ def load_traffic(
     df = df.loc[start_time:end_time].iloc[:, components]
     df = df.resample(freq).mean()
 
-    return df, freq
+    return df
