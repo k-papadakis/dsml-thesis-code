@@ -222,8 +222,8 @@ def run(
     else:
         raise ValueError(f"Unknown dataset name: {dataset_name}")
 
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True)
+    if not input_dir.is_dir():
+        input_dir.mkdir(parents=True)
         print(f"Dataset {dataset_name} not found in {input_dir}")
         print(f"Downloading dataset {dataset_name} from {url} to {input_dir}")
         download_and_extract_zip(url, input_dir)
