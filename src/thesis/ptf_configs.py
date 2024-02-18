@@ -64,7 +64,7 @@ def electricity_deepvar(
     model_config = DeepVARConfig(
         hidden_size=120,
         rnn_layers=2,
-        rank=50,
+        rank=10,
     )
 
     setting = deepvar(
@@ -106,7 +106,7 @@ def traffic_deepvar(
     model_config = DeepVARConfig(
         hidden_size=120,
         rnn_layers=2,
-        rank=50,
+        rank=10,
     )
 
     setting = deepvar("traffic", model_config, training_config, input_dir, output_dir)

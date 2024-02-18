@@ -168,7 +168,7 @@ def deepvar_objective(
         model_config = DeepVARConfig(
             hidden_size=trial.suggest_categorical("hidden_size", [30, 60, 120]),
             rnn_layers=2,
-            rank=50,
+            rank=10,
         )
 
         training_config = _common_training_config(trial)

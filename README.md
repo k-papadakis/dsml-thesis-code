@@ -1,6 +1,6 @@
 # Code for Forecasting Methods Thesis
 
-For the Data Science and Machine Learning Master's of National Technical University of Athens.
+For the Data Science and Machine Learning Master's of the National Technical University of Athens.
 
 Install and run `thesis -h` for more info.
 
@@ -23,7 +23,7 @@ thesis run electricity nbeats
 thesis run traffic nbeats
 ```
 
-To find hyperparams for all deep learning models, use
+To find hyperparameters for all deep learning models, use
 
 ```bash
 thesis find electricity tft --n-trials 30
@@ -37,3 +37,4 @@ thesis find traffic nbeats --n-trials 30
 ```
 
 FIXME: Optuna doesn't work with DeepVar
+The DeepVAR "implementation" in Pytorch Forecasting seems wrong, for example, copulas are nowhere to be found...
