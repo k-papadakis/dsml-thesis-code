@@ -123,6 +123,12 @@ def find(args):
     )
 
 
+def plot(args):
+    from .plotting import save_plots
+
+    save_plots(args.dataset, args.input_dir, args.output_dir)
+
+
 def main():
     argparser = ArgumentParser()
 
@@ -214,6 +220,24 @@ def main():
         type=str,
     )
     finder_parser.set_defaults(func=find)
+
+    # plot
+    plot_parser = subparsers.add_parser("plot")
+    plot_parser.add_argument(
+        "dataset",
+        choices=["electricity", "traffic"],
+    )
+    plot_parser.add_argument(
+        "--input-dir",
+        default="datasets",
+        type=str,
+    )
+    plot_parser.add_argument(
+        "--output-dir",
+        default="output",
+        type=str,
+    )
+    plot_parser.set_defaults(func=plot)
 
     args = argparser.parse_args()
     args.func(args)

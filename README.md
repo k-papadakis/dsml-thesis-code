@@ -4,6 +4,13 @@ For the Data Science and Machine Learning Master's of the National Technical Uni
 
 Install and run `thesis -h` for more info.
 
+To plot the datasets, use
+
+```bash
+thesis plot electricity
+thesis plot traffic
+```
+
 To run all models for all datasets, use
 
 ```bash
@@ -23,7 +30,7 @@ thesis run electricity nbeats
 thesis run traffic nbeats
 ```
 
-To find hyperparameters for all deep learning models, use
+To find hyperparameters for the deep learning models, use
 
 ```bash
 thesis find electricity tft --n-trials 30
@@ -35,6 +42,3 @@ thesis find traffic deepar --n-trials 30
 thesis find electricity nbeats --n-trials 30
 thesis find traffic nbeats --n-trials 30
 ```
-
-FIXME: Optuna doesn't work with DeepVar
-The DeepVAR "implementation" in Pytorch Forecasting seems wrong, for example, copulas are nowhere to be found...
