@@ -9,7 +9,9 @@ import seaborn as sns
 from matplotlib.figure import Figure
 
 
-def plot_median(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) -> Figure:
+def plot_median(
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
+) -> Figure:
     if dataset == "electricity":
         title = "Median Electricity Consumption"
         ylabel = "Electricity Consumption (kW per 15 minutes)"
@@ -19,11 +21,12 @@ def plot_median(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) ->
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
-    fig = plt.figure(figsize=(15, 7))
+    fig = plt.figure(figsize=(10, 5))
 
     df.sum(axis=1).plot(linewidth=1)
 
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Time")
     plt.ylabel(ylabel)
     plt.grid(True)
@@ -32,7 +35,9 @@ def plot_median(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) ->
     return fig
 
 
-def plot_corr(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) -> Figure:
+def plot_corr(
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
+) -> Figure:
     if dataset == "electricity":
         title = "Correlation Heatmap of Electricity Consumption"
         axis_label = "Household ID"
@@ -44,7 +49,7 @@ def plot_corr(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) -> F
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
-    fig = plt.figure(figsize=(20, 15))
+    fig = plt.figure(figsize=(8, 6))
 
     sns.heatmap(
         df.corr(),
@@ -55,7 +60,8 @@ def plot_corr(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) -> F
         cbar_kws={"label": cbar_label},
     )
 
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel(axis_label)
     plt.ylabel(axis_label)
     plt.tight_layout()
@@ -64,33 +70,35 @@ def plot_corr(df: pd.DataFrame, dataset: Literal["electricity", "traffic"]) -> F
 
 
 def plot_heatmap(
-    df: pd.DataFrame, dataset: Literal["electricity", "traffic"]
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
 
     if dataset == "electricity":
-        title = "Heatmap of Electricity Consumption (One Week Period)"
+        min_date, max_date = "2014-02-01", "2014-02-07"
+        title = f"Heatmap of Electricity Consumption ({min_date} to {max_date})"
         ylabel = "Household ID"
         cbar_label = "Log Electricity Consumption (kW per 15 minutes)"
-        min_date, max_date = "2014-02-01", "2014-02-07"
     elif dataset == "traffic":
-        title = "Heatmap of Lane Occupancy Rates (One Week Period)"
+        min_date, max_date = "2008-01-07", "2008-01-14"
+        title = f"Heatmap of Lane Occupancy Rates ({min_date} to {max_date})"
         ylabel = "Lane ID"
         cbar_label = "Log Lane Occupancy Rate"
-        min_date, max_date = "2008-01-07", "2008-01-14"
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
     df = df.copy()
     df = df.loc[min_date:max_date]
-    df.index = df.index.strftime("%Y-%m-%d %H:%M")  # type: ignore
+    df.index = df.index.strftime("%-H")  # type: ignore
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(10, 5))
 
     sns.heatmap(
         np.log(df.T), cmap="viridis", robust=True, cbar_kws={"label": cbar_label}
     )
 
-    plt.title(title)
+    plt.xticks(rotation=45)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Time")
     plt.ylabel(ylabel)
     plt.tight_layout()
@@ -99,7 +107,7 @@ def plot_heatmap(
 
 
 def plot_hourly_boxplot(
-    df: pd.DataFrame, dataset: Literal["electricity", "traffic"]
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
     if dataset == "electricity":
         title = "Hourly Electricity Consumption Boxplot"
@@ -110,12 +118,13 @@ def plot_hourly_boxplot(
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(6.4, 4.8))
 
     sns.boxplot(df.groupby(df.index.hour).mean().T)  # type: ignore
 
     plt.xticks(rotation=45)
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Hour of the Day")
     plt.ylabel(ylabel)
     plt.tight_layout()
@@ -124,7 +133,7 @@ def plot_hourly_boxplot(
 
 
 def plot_weekly_boxplot(
-    df: pd.DataFrame, dataset: Literal["electricity", "traffic"]
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
     if dataset == "electricity":
         title = "Weekly Electricity Consumption Boxplot"
@@ -148,12 +157,13 @@ def plot_weekly_boxplot(
     df = df.groupby(df.index.weekday).mean()  # type: ignore
     df.index = days_of_week  # type: ignore
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(6.4, 4.8))
 
     sns.boxplot(df.T)
 
     plt.xticks(rotation=45)
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Day of the Week")
     plt.ylabel(ylabel)
     plt.tight_layout()
@@ -162,7 +172,7 @@ def plot_weekly_boxplot(
 
 
 def plot_hourly_median(
-    df: pd.DataFrame, dataset: Literal["electricity", "traffic"]
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
     if dataset == "electricity":
         title = "Median Hourly Electricity Consumption"
@@ -173,11 +183,12 @@ def plot_hourly_median(
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(6.4, 4.8))
 
     df.groupby(df.index.hour).mean().median(axis=1).plot(kind="line", marker="o")  # type: ignore
 
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Hour of the Day")
     plt.ylabel(ylabel)
     plt.grid(True)
@@ -188,7 +199,7 @@ def plot_hourly_median(
 
 
 def plot_weekly_median(
-    df: pd.DataFrame, dataset: Literal["electricity", "traffic"]
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
     if dataset == "electricity":
         title = "Median Weekly Electricity Consumption"
@@ -212,11 +223,12 @@ def plot_weekly_median(
     df = df.groupby(df.index.weekday).mean().median(axis=1)  # type: ignore
     df.index = days_of_week  # type: ignore
 
-    fig = plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(6.4, 4.8))
 
     df.plot(kind="line", marker="o", color="green")
 
-    plt.title(title)
+    if add_title:
+        plt.title(title)
     plt.xlabel("Day of the Week")
     plt.ylabel(ylabel)
     plt.grid(True)
@@ -230,6 +242,7 @@ def save_plots(
     dataset: Literal["electricity", "traffic"],
     input_dir: str | PathLike[str],
     output_dir: str | PathLike[str],
+    add_titles: bool,
 ):
     from .dataloading import (
         ELECTRICITY_URL,
@@ -261,27 +274,27 @@ def save_plots(
 
     df = loader(input_dir)
 
-    plot_median(df, dataset).savefig(
+    plot_median(df, dataset, add_titles).savefig(
         output_dir / "median.png",
     )
-    plot_hourly_boxplot(df, dataset).savefig(
+    plot_hourly_boxplot(df, dataset, add_titles).savefig(
         output_dir / "hourly_boxplot.png",
     )
-    plot_hourly_median(df, dataset).savefig(
+    plot_hourly_median(df, dataset, add_titles).savefig(
         output_dir / "hourly_median.png",
     )
-    plot_hourly_boxplot(df, dataset).savefig(
+    plot_hourly_boxplot(df, dataset, add_titles).savefig(
         output_dir / "hourly_boxplot.png",
     )
-    plot_weekly_boxplot(df, dataset).savefig(
+    plot_weekly_boxplot(df, dataset, add_titles).savefig(
         output_dir / "weekly_boxplot.png",
     )
-    plot_weekly_median(df, dataset).savefig(
+    plot_weekly_median(df, dataset, add_titles).savefig(
         output_dir / "weekly_median.png",
     )
-    plot_corr(df, dataset).savefig(
+    plot_corr(df, dataset, add_titles).savefig(
         output_dir / "corr.png",
     )
-    plot_heatmap(df, dataset).savefig(
+    plot_heatmap(df, dataset, add_titles).savefig(
         output_dir / "heatmap.png",
     )

@@ -126,7 +126,7 @@ def find(args):
 def plot(args):
     from .plotting import save_plots
 
-    save_plots(args.dataset, args.input_dir, args.output_dir)
+    save_plots(args.dataset, args.input_dir, args.output_dir, args.add_titles)
 
 
 def main():
@@ -236,6 +236,10 @@ def main():
         "--output-dir",
         default="output",
         type=str,
+    )
+    plot_parser.add_argument(
+        "--add-titles",
+        action="store_true",
     )
     plot_parser.set_defaults(func=plot)
 
