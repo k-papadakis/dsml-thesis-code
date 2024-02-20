@@ -408,11 +408,10 @@ def deepar(
     datamodule.setup("test")
     test_dataset = datamodule.test
 
-    quantiles = [0.1, 0.5, 0.9]
     if model_config.distribution == "beta":
-        loss = BetaDistributionLoss(quantiles=quantiles)
+        loss = BetaDistributionLoss()
     elif model_config.distribution == "normal":
-        loss = NormalDistributionLoss(quantiles=quantiles)
+        loss = NormalDistributionLoss()
     else:
         raise ValueError(f"Unknown distribution: {model_config.distribution}")
 
@@ -469,10 +468,7 @@ def deepvar(
     datamodule.setup("test")
     test_dataset = datamodule.test
 
-    quantiles = [0.1, 0.5, 0.9]
-    loss = MultivariateNormalDistributionLoss(
-        quantiles=quantiles, rank=model_config.rank
-    )
+    loss = MultivariateNormalDistributionLoss(rank=model_config.rank)
 
     model: ForecastingModel = DeepAR.from_dataset(  # type: ignore
         test_dataset,
