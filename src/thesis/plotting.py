@@ -35,17 +35,15 @@ def plot_median(
     return fig
 
 
-def plot_corr(
+def plot_corr_heatmap(
     df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
 ) -> Figure:
     if dataset == "electricity":
         title = "Correlation Heatmap of Electricity Consumption"
         axis_label = "Household ID"
-        cbar_label = "Correlation Coefficient"
     elif dataset == "traffic":
         title = "Correlation Heatmap of Lane Occupancy Rates"
         axis_label = "Lane ID"
-        cbar_label = "Correlation Coefficient"
     else:
         raise ValueError(f"Invalid dataset {dataset}")
 
@@ -57,13 +55,36 @@ def plot_corr(
         annot=False,
         cmap="coolwarm",
         linewidths=0.5,
-        cbar_kws={"label": cbar_label},
+        cbar_kws={"label": "Correlation Coefficient"},
     )
 
     if add_title:
         plt.title(title)
     plt.xlabel(axis_label)
     plt.ylabel(axis_label)
+    plt.tight_layout()
+
+    return fig
+
+
+def plot_corr_hist(
+    df: pd.DataFrame, dataset: Literal["electricity", "traffic"], add_title: bool
+) -> Figure:
+    if dataset == "electricity":
+        title = "Correlation Histogram of Electricity Consumption"
+    elif dataset == "traffic":
+        title = "Correlation Histogram of Lane Occupancy Rates"
+    else:
+        raise ValueError(f"Invalid dataset {dataset}")
+
+    fig = plt.figure(figsize=(6.4, 4.8))
+
+    corr = df.corr()
+    sns.histplot(corr.values[corr.values < 1.0], kde=True)
+
+    if add_title:
+        plt.title(title)
+    plt.xlabel("Correlation Coefficient")
     plt.tight_layout()
 
     return fig
@@ -292,8 +313,11 @@ def save_plots(
     plot_weekly_median(df, dataset, add_titles).savefig(
         output_dir / "weekly_median.png",
     )
-    plot_corr(df, dataset, add_titles).savefig(
-        output_dir / "corr.png",
+    plot_corr_heatmap(df, dataset, add_titles).savefig(
+        output_dir / "corr_heatmap.png",
+    )
+    plot_corr_hist(df, dataset, add_titles).savefig(
+        output_dir / "corr_hist.png",
     )
     plot_heatmap(df, dataset, add_titles).savefig(
         output_dir / "heatmap.png",

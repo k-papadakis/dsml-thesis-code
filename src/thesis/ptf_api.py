@@ -5,6 +5,7 @@ from typing import Iterable, Literal, Optional
 
 import lightning.pytorch as pl
 import pandas as pd
+import seaborn as sns
 import torch
 import torch.nn as nn
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
@@ -280,7 +281,7 @@ class Setting:
         elif isinstance(best_model, DeepAR) and isinstance(
             best_model.loss, MultivariateNormalDistributionLoss
         ):
-            cov = (
+            cov: torch.Tensor = (
                 best_model.loss.map_x_to_distribution(
                     best_model.predict(
                         test_dataset,
@@ -292,14 +293,28 @@ class Setting:
                 .cpu()
             )
             corr = cov / cov.diag().outer(cov.diag()).sqrt()
+            corr = pd.DataFrame(
+                corr.numpy(),
+                index=out.index["series"],
+                columns=out.index["series"],
+            )
+
+            fig = plt.figure(figsize=(8, 6))
+            sns.heatmap(
+                corr,
+                center=0.0,
+                annot=False,
+                cmap="coolwarm",
+                linewidths=0.5,
+                cbar_kws={"label": "Correlation Coefficient"},
+            )
+            plt.tight_layout()
+            summary_writer.add_figure("correlation_heatmap", fig)
 
             fig = plt.figure()
-            plt.imshow(corr, cmap="bwr", vmin=-1, vmax=1)
-            plt.colorbar()
-            summary_writer.add_figure("correlation", fig)
-
-            fig = plt.figure()
-            plt.hist(corr[corr < 1], edgecolor="black")
+            sns.histplot(corr.values[corr.values < 1.0], kde=True)
+            plt.xlabel("Correlation Coefficient")
+            plt.tight_layout()
             summary_writer.add_figure("correlation_histogram", fig)
 
         # TFT, DeepAR, DeepVAR

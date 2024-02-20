@@ -21,10 +21,11 @@ dependencies = [
     "prophet >= 1.1.5",
     "optuna >= 3.5.0",
     "tensorboard >= 2.16.0",
+    "seaborn >= 0.13.2",
 ]
 
 [project.optional-dependencies]
-plot = ["plotly,seaborn"]
+plotly = ["plotly"]
 tensorboard = ["torch-tb-profiler"]
 
 [project.scripts]
