@@ -139,7 +139,7 @@ def deepar_objective(
     def inner(trial: optuna.Trial) -> float:
 
         model_config = DeepARConfig(
-            hidden_size=trial.suggest_categorical("hidden_size", [30, 60, 120]),
+            hidden_size=trial.suggest_categorical("hidden_size", [80, 160, 320]),
             rnn_layers=2,
             distribution=distribution,
         )
@@ -166,7 +166,7 @@ def deepvar_objective(
 
     def inner(trial: optuna.Trial) -> float:
         model_config = DeepVARConfig(
-            hidden_size=trial.suggest_categorical("hidden_size", [30, 60, 120]),
+            hidden_size=trial.suggest_categorical("hidden_size", [80, 160, 320]),
             rnn_layers=2,
             rank=10,
         )
