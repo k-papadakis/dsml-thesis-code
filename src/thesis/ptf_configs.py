@@ -20,12 +20,12 @@ def electricity_nbeats(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=5e-4,
-        gradient_clip_val=4.0,
-        dropout=0.3,
+        gradient_clip_val=2.0,
+        dropout=0.2,
     )
     model_config = NBEATSConfig(
         expansion_coefficient_lengths=[3, 3],
-        widths=[64, 2048],
+        widths=[256, 2048],
     )
 
     setting = nbeats(
@@ -57,12 +57,12 @@ def electricity_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-3,
-        gradient_clip_val=2.0,
-        dropout=0.1,
+        learning_rate=6e-3,
+        gradient_clip_val=6.0,
+        dropout=0.4,
     )
     model_config = DeepVARConfig(
-        hidden_size=120,
+        hidden_size=160,
         rnn_layers=2,
         rank=10,
     )
@@ -78,12 +78,12 @@ def electricity_deepar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-3,
-        gradient_clip_val=2.0,
-        dropout=0.1,
+        learning_rate=6e-3,
+        gradient_clip_val=6.0,
+        dropout=0.4,
     )
     model_config = DeepARConfig(
-        hidden_size=120,
+        hidden_size=160,
         rnn_layers=2,
         distribution="normal",
     )
@@ -99,12 +99,12 @@ def traffic_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
-        gradient_clip_val=40.0,
-        dropout=0.2,
+        learning_rate=4e-3,
+        gradient_clip_val=45.0,
+        dropout=0.4,
     )
     model_config = DeepVARConfig(
-        hidden_size=120,
+        hidden_size=160,
         rnn_layers=2,
         rank=10,
     )
@@ -118,12 +118,12 @@ def traffic_deepar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
-        gradient_clip_val=40.0,
-        dropout=0.2,
+        learning_rate=4e-3,
+        gradient_clip_val=45.0,
+        dropout=0.4,
     )
     model_config = DeepARConfig(
-        hidden_size=120,
+        hidden_size=160,
         rnn_layers=2,
         distribution="beta",
     )
@@ -136,9 +136,9 @@ def electricity_tft(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=3e-3,
-        gradient_clip_val=50.0,
-        dropout=0.2,
+        learning_rate=7e-3,
+        gradient_clip_val=0.5,
+        dropout=0.1,
     )
 
     model_config = TFTConfig(
@@ -156,13 +156,13 @@ def traffic_tft(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=1e-2,
-        gradient_clip_val=1.0,
-        dropout=0.3,
+        learning_rate=3e-3,
+        gradient_clip_val=20.0,
+        dropout=0.2,
     )
 
     model_config = TFTConfig(
-        hidden_size=80,
+        hidden_size=320,
         lstm_layers=1,
         attention_head_size=4,
     )

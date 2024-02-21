@@ -26,7 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 plotly = ["plotly"]
-tensorboard = ["torch-tb-profiler"]
+dashboards = ["torch-tb-profiler","optuna-dashboard"]
 
 [project.scripts]
 thesis = "thesis.cli:main"
