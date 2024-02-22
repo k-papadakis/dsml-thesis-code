@@ -101,15 +101,23 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     # fig_components.savefig(path / "components.pdf")
     plt.close(fig_components)
 
-    # Forecasts image
-    fig_forecasts = plt.figure(figsize=(10, 6))
-    series.data.set_index("ds")["y"][-4 * len(series.test) :].rename("observed").plot(
-        legend=True
-    )
-    forecast.set_index("ds")["yhat"][-len(series.test) :].rename("predicted").plot(
-        legend=True
-    )
-    fig_forecasts.tight_layout()
+    # Forecasts image (Conforming with Pytorch Forecasting plots)
+    fig_forecasts, ax = plt.subplots()
+
+    y = series.data["y"].values[-8 * len(series.test) :]
+    y_hat = forecast["yhat"].values[-len(series.test) :]
+    n_pred = y_hat.shape[0]
+    x_obs = np.arange(-(y.shape[0] - n_pred), 0)
+    x_pred = np.arange(n_pred)
+    prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
+    obs_color = next(prop_cycle)["color"]
+    pred_color = next(prop_cycle)["color"]
+
+    ax.plot(x_obs, y[:-n_pred], label="observed", c=obs_color)
+    ax.plot(x_pred, y[-n_pred:], label=None, c=obs_color)
+    ax.plot(x_pred, y_hat, label="predicted", c=pred_color)
+    ax.set_xlabel("Time index")
+    fig_forecasts.legend()
 
     fig_forecasts.savefig(path / "forecasts.png")
     # fig_forecasts.savefig(path / "forecasts.pdf")
