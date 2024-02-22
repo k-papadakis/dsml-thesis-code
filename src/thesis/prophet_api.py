@@ -81,8 +81,8 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     forecast = model.predict(future)
 
     # Performance csv
-    y_pred = forecast.iloc[-len(series.test) :]["yhat"].values
-    y_true = series.test["y"].values
+    y_pred = forecast.iloc[-len(series.test) :]["yhat"].to_numpy()
+    y_true = series.test["y"].to_numpy()
     performance = compute_metrics(y_true, y_pred)
     pd.Series(performance).to_frame().T.to_csv(path / "performance.csv", index=False)
 
@@ -91,21 +91,19 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     _ = add_changepoints_to_plot(fig_model.gca(), model, forecast)
 
     fig_model.savefig(path / "model.png")
-    # fig_model.savefig(path / "model.pdf")
     plt.close(fig_model)
 
     # Components image
     fig_components = model.plot_components(forecast)
 
     fig_components.savefig(path / "components.png")
-    # fig_components.savefig(path / "components.pdf")
     plt.close(fig_components)
 
     # Forecasts image (Conforming with Pytorch Forecasting plots)
     fig_forecasts, ax = plt.subplots()
 
-    y = series.data["y"].values[-8 * len(series.test) :]
-    y_hat = forecast["yhat"].values[-len(series.test) :]
+    y = series.data["y"].to_numpy()[-8 * len(series.test) :]
+    y_hat = forecast["yhat"].to_numpy()[-len(series.test) :]
     n_pred = y_hat.shape[0]
     x_obs = np.arange(-(y.shape[0] - n_pred), 0)
     x_pred = np.arange(n_pred)
@@ -120,7 +118,6 @@ def save_model_results(path: str | PathLike, series: Series, params: ParamDict) 
     fig_forecasts.legend()
 
     fig_forecasts.savefig(path / "forecasts.png")
-    # fig_forecasts.savefig(path / "forecasts.pdf")
     plt.close(fig_forecasts)
 
 
@@ -146,7 +143,6 @@ class CvResult:
         fig_cv = plot_cross_validation_metric(self.result, metric="smape")
         fig_cv.gca().set_title(f"CV")
         fig_cv.savefig(path / "cv.png")
-        # fig_cv.savefig(path / "cv.pdf")
         plt.close(fig_cv)
 
 
@@ -238,7 +234,7 @@ def run(
         print(f"Downloaded dataset {dataset_name} to {input_dir}")
 
     df = loader(input_dir)
-    df = df.replace(0.0, np.nan)
+    # df = df.replace(0.0, np.nan)
 
     series_iter = (
         Series(
