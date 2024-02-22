@@ -20,25 +20,12 @@ from .ptf_api import (
 )
 
 
-def _find_and_set_lr(setting: Setting, trial: optuna.Trial) -> None:
-    found_lr = setting.find_lr()
-    if found_lr is None or found_lr > 1e-2:
-        min_lr, max_lr = 1e-4, 1e-2
-        print(f"Suggesting learning rate in log scale between {min_lr} and {max_lr}.")
-    else:
-        min_lr, max_lr = found_lr, found_lr
-
-    setting.set_lr(trial.suggest_float("learning_rate", min_lr, max_lr, log=True))
-
-
 def _common_training_config(trial: optuna.Trial) -> TrainingConfig:
     return TrainingConfig(
         batch_size=128,
-        learning_rate=1e-5,  # irrelevant, because it will be overridden
-        gradient_clip_val=trial.suggest_float(
-            "gradient_clip_val", 0.1, 100.0, log=True
-        ),
-        dropout=trial.suggest_float("dropout", 0.1, 0.5, step=0.1),
+        learning_rate=trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True),
+        gradient_clip_val=trial.suggest_float("gradient_clip_val", 0.1, 50.0, log=True),
+        dropout=trial.suggest_float("dropout", 0.0, 0.5, log=False),
     )
 
 
@@ -89,7 +76,6 @@ def nbeats_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-        _find_and_set_lr(setting, trial)
 
         setting.fit()
 
@@ -115,7 +101,6 @@ def tft_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-        _find_and_set_lr(setting, trial)
 
         setting.fit()
 
@@ -149,7 +134,6 @@ def deepar_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-        _find_and_set_lr(setting, trial)
 
         setting.fit()
 
@@ -176,7 +160,6 @@ def deepvar_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-        _find_and_set_lr(setting, trial)
 
         return setting.trainer.callback_metrics["val_loss"].item()
 
