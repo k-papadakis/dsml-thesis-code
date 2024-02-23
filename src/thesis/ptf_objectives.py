@@ -176,7 +176,12 @@ def deepvar_objective(
             dataset_name, model_config, training_config, input_dir, output_dir
         )
         _modify_setting(setting, trial)
-        _find_and_set_lr(setting, trial)
+
+        # Skipping _find_and_set_lr due to non positive-definiteness error in the Cholesky decomposition.
+        # Telling Optuna to suggest from a wider range of learning rates, because Pytorch Tuner would have searched in [1e-8, 1.0].
+        setting.set_lr(trial.suggest_float("learning_rate", 1e-5, 1e-2, log=True))
+
+        setting.fit()
 
         return setting.trainer.callback_metrics["val_loss"].item()
 
