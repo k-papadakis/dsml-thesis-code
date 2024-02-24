@@ -58,11 +58,11 @@ def electricity_deepvar(
     training_config = TrainingConfig(
         batch_size=128,
         learning_rate=6e-3,
-        gradient_clip_val=6.0,
-        dropout=0.4,
+        gradient_clip_val=97.0,
+        dropout=0.5,
     )
     model_config = DeepVARConfig(
-        hidden_size=160,
+        hidden_size=80,
         rnn_layers=2,
         rank=10,
     )
@@ -99,9 +99,9 @@ def traffic_deepvar(
 ) -> Setting:
     training_config = TrainingConfig(
         batch_size=128,
-        learning_rate=4e-3,
-        gradient_clip_val=45.0,
-        dropout=0.4,
+        learning_rate=1e-3,
+        gradient_clip_val=1.2,
+        dropout=0.3,
     )
     model_config = DeepVARConfig(
         hidden_size=160,
