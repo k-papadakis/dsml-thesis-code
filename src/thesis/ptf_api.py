@@ -358,6 +358,7 @@ def nbeats(
 
     model: ForecastingModel = NBeats.from_dataset(  # type: ignore
         test_dataset,
+        backcast_loss_ratio=1.0,
         expansion_coefficient_lengths=model_config.expansion_coefficient_lengths,
         widths=model_config.widths,
         learning_rate=training_config.learning_rate,
