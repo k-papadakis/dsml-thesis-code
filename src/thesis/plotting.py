@@ -95,7 +95,7 @@ def plot_heatmap(
 ) -> Figure:
 
     if dataset == "electricity":
-        min_date, max_date = "2014-02-01", "2014-02-07"
+        min_date, max_date = "2014-02-03", "2014-02-10"
         title = f"Heatmap of Electricity Consumption ({min_date} to {max_date})"
         ylabel = "Household ID"
         cbar_label = "Log Electricity Consumption (kW per 15 minutes)"
@@ -114,13 +114,17 @@ def plot_heatmap(
     fig = plt.figure(figsize=(10, 5))
 
     sns.heatmap(
-        np.log(df.T), cmap="viridis", robust=True, cbar_kws={"label": cbar_label}
+        np.log(df.T),
+        cmap="viridis",
+        robust=True,
+        cbar_kws={"label": cbar_label},
+        xticklabels=6,
     )
 
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=0)
     if add_title:
         plt.title(title)
-    plt.xlabel("Time")
+    plt.xlabel("Hour of the Day")
     plt.ylabel(ylabel)
     plt.tight_layout()
 
